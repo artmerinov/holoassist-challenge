@@ -1,0 +1,12 @@
+# byte-compiled
+__pycache__/
+
+# environments
+.venv/
+
+# data
+logs/
+checkpoints/
+
+# OS generated files
+.DS_Store
