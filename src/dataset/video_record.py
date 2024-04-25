@@ -1,5 +1,4 @@
 from typing import Dict, Any
-import random
 
 from .prepare_labels_mapping import action_name_to_id
 
@@ -56,5 +55,5 @@ class ClipRecord:
         return self.action_name_to_id_dict[self.action]
 
     @property
-    def correctness(self):
-        return self._clip["Action Correctness"]
+    def is_anomaly(self):
+        return self._clip["Anomaly"]

@@ -2,8 +2,9 @@
 
 # copy files
 rsync -av \
-    train.py \
-    train.sh \
+    train_ae_with_memory.py \
+    train_ae_with_memory.sh \
+    eval_ae_with_memory.py \
     amerinov@basler:/data/amerinov/projects/holoassist
 
 # copy scr/ folder

@@ -25,7 +25,7 @@ def prepare_annotation(
                     "Verb": event["attributes"]["Verb"],
                     "Noun": event["attributes"]["Noun"],
                     "Action": event["attributes"]["Verb"] + "-" + event["attributes"]["Noun"],
-                    "Action Correctness": int(event["attributes"]["Action Correctness"] == "Correct Action")
+                    "Anomaly": int(event["attributes"]["Action Correctness"] != "Correct Action") # 1 if a mistake 0 otherwise
                 }
                 annt[name].append(action_info)
     
