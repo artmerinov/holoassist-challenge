@@ -2,14 +2,15 @@
 
 # copy files
 rsync -av \
-    train_ae_with_memory.py \
-    train_ae_with_memory.sh \
-    eval_ae_with_memory.py \
+    train_action.py \
+    train_action.sh \
+    train_mistake.py \
+    train_mistake.sh \
     amerinov@basler:/data/amerinov/projects/holoassist
 
 # copy scr/ folder
 rsync -av --exclude '__pycache__' src/ \
     amerinov@basler:/data/amerinov/projects/holoassist/src
 
-rsync -av logs/ \
-    amerinov@basler:/data/amerinov/projects/holoassist/logs
+# rsync -av logs/ \
+#     amerinov@basler:/data/amerinov/projects/holoassist/logs
