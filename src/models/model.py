@@ -24,6 +24,8 @@ class VideoModel(nn.Module):
 
         if self.base_model_name == "TimeSformer":
             self._prepare_timesformer224()
+        elif self.base_model_name == "HORST":
+            self._prepare_horst()
         else:
             self._prepare_base_model()
             self._prepare_model()
@@ -72,13 +74,39 @@ class VideoModel(nn.Module):
             )
             self.base_model.load_state_dict(vit_state, strict=False)
 
-            self.base_model.last_layer_name = 'classifier'
+            # self.base_model.last_layer_name = 'classifier'
             self.input_size = 224
             self.input_space = "RGB"
             self.input_range = [0, 1]
             self.div = True
             self.input_mean = [0.5, 0.5, 0.5]
             self.input_std = [0.5, 0.5, 0.5]
+
+    def _prepare_horst(self):
+        
+        from src.horst.models import AttentionRNN
+
+        self.base_model = AttentionRNN(
+            num_a=self.num_classes, 
+            pretrain=False, 
+            backbone="swin-base"
+        )
+         
+        chk = torch.load('/data/amerinov/data/backbones/FAttentionRNN-anticipation_0.25_6_8_rgb_mt5r_best.pth.tar')
+        # chk = torch.load('/Users/artemmerinov/data/backbones/FAttentionRNN-anticipation_0.25_6_8_rgb_mt5r_best.pth.tar',
+        #                  map_location=torch.device('cpu'))
+        model_state = self.base_model.state_dict()
+        for i in model_state:
+            if i in chk['state_dict'] and model_state[i].shape != chk['state_dict'][i].shape:
+                del chk['state_dict'][i]
+        self.base_model.load_state_dict(chk['state_dict'], strict=False)
+
+        self.input_size = 224
+        self.input_space = "RGB"
+        self.input_range = [0, 1]
+        self.div = True
+        self.input_mean = [0.5, 0.5, 0.5]
+        self.input_std = [0.5, 0.5, 0.5]
 
     def _prepare_base_model(self):
         
@@ -157,11 +185,19 @@ class VideoModel(nn.Module):
         c = t_c // t
 
         # Make tensor of size requierd for base model
+        
         if self.base_model_name == "TimeSformer":
             # https://github.com/facebookresearch/TimeSformer
-            x = Rearrange("n (t c) h w -> n c t h w", n=n, c=c, t=t, h=h, w=w)(x) # b c t h w 
+            x = Rearrange("n (t c) h w -> n c t h w", n=n, c=c, t=t, h=h, w=w)(x) # n c t h w
             logits = self.base_model(x)
             return logits
+        
+        elif self.base_model_name == "HORST":
+            x = Rearrange("n (t c) h w -> n t c h w", n=n, c=c, t=t, h=h, w=w)(x) # n t c h w 
+            frame_logits = self.base_model(x) # n t num_classes
+            clip_logits = torch.mean(frame_logits, dim=1, keepdim=False) # n num_classes
+            return clip_logits
+        
         else:
             # (!) it is important to have (t c) and not (c t)
             x = Rearrange("n (t c) h w -> (n t) c h w", n=n, c=c, t=t, h=h, w=w)(x) # [16*5, 3, 224, 224]

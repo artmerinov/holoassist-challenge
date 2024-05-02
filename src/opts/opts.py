@@ -14,7 +14,7 @@ parser.add_argument("--dataset_name", type=str, default="holoassist", help="Data
 parser.add_argument("--fusion_mode", type=str, default=None, choices=["None", "GSF", "GSM"], help="Fusion mode.")
 
 # ========================= Model ==========================
-parser.add_argument("--base_model", type=str, default="BNInception", choices=["resnet50", "resnet101", "BNInception", "InceptionV3", "TimeSformer"])
+parser.add_argument("--base_model", type=str, default="BNInception", choices=["resnet50", "resnet101", "BNInception", "InceptionV3", "TimeSformer", "HORST"])
 parser.add_argument("--num_segments", type=int, default=8, help="Number of sampled frames from each video.")
 parser.add_argument("--dropout", type=float, default=0.5, help="Dropout ratio of last fc layer of base model.")
 

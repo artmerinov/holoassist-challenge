@@ -47,7 +47,7 @@ if __name__ == "__main__":
         base_model=args.base_model,
         fusion_mode=args.fusion_mode,
         dropout=args.dropout,
-        verbose=False,
+        verbose=True,
     ).to(device)
     # print(model)
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     learnable_named_parameters = model.learnable_named_parameters
     
     # Parallel!
-    model = torch.nn.DataParallel(model).to(device)
+    # model = torch.nn.DataParallel(model).to(device)
 
     #  ========================= TRAIN DATA =========================
     # 
