@@ -4,8 +4,10 @@
 rsync -av \
     train_action.py \
     train_action.sh \
+    eval_action.py \
     train_mistake.py \
     train_mistake.sh \
+    eval_mistake.py \
     amerinov@basler:/data/amerinov/projects/holoassist
 
 # copy scr/ folder

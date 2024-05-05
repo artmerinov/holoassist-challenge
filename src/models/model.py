@@ -56,6 +56,9 @@ class VideoModel(nn.Module):
             import timm
             from timesformer.models.vit import TimeSformer 
 
+            # TODO: try different VIT model
+            # e.g. 384 resolution or SWIN Transformer
+
             vit_model = timm.create_model(
                 model_name='timm/vit_base_patch16_224.augreg_in21k_ft_in1k',
                 pretrained=True,
@@ -74,7 +77,6 @@ class VideoModel(nn.Module):
             )
             self.base_model.load_state_dict(vit_state, strict=False)
 
-            # self.base_model.last_layer_name = 'classifier'
             self.input_size = 224
             self.input_space = "RGB"
             self.input_range = [0, 1]
@@ -92,6 +94,8 @@ class VideoModel(nn.Module):
             backbone="swin-base"
         )
          
+        # TODO: add file path to config
+
         chk = torch.load('/data/amerinov/data/backbones/FAttentionRNN-anticipation_0.25_6_8_rgb_mt5r_best.pth.tar')
         # chk = torch.load('/Users/artemmerinov/data/backbones/FAttentionRNN-anticipation_0.25_6_8_rgb_mt5r_best.pth.tar',
         #                  map_location=torch.device('cpu'))

@@ -29,10 +29,6 @@ parser.add_argument("--momentum", type=float, default=0.9, help="Momentum.")
 parser.add_argument("--weight_decay", type=float, default=5e-4, help="Weight decay.")
 parser.add_argument("--clip_gradient", type=float, default=None, help="Gradient norm clipping.")
 
-# ========================= Monitor ==========================
-parser.add_argument("--checkpoint_interval", type=int, default=3, help="How often the model is saved.")
-parser.add_argument("--runs_path", type=str, default="runs/", help="Path to tensorboard runs directory.")
-
 # ========================= Dataloader ==========================
 parser.add_argument("--batch_size", type=int, default=16)
 parser.add_argument("--num_workers", type=int, default=4, help="Number of workers in dataloader.")

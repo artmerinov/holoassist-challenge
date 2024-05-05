@@ -1,10 +1,8 @@
 import gc
 import os
 import time
-import numpy as np
-import random
 from datetime import datetime
-from functools import partial
+
 import torch
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
@@ -14,12 +12,9 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from src.opts.opts import parser
 from src.utils.reproducibility import make_reproducible
-from src.utils.model_specs import model_size
 from src.models.model import VideoModel
 from src.dataset.video_dataset import VideoDataset, prepare_clips_data
-from src.dataset.video_transforms import (
-    GroupMultiScaleCrop, Stack, ToTorchFormatTensor, GroupNormalize,
-)
+from src.dataset.video_transforms import GroupMultiScaleCrop, Stack, ToTorchFormatTensor, GroupNormalize
 from src.utils.meters import AverageMeter
 from src.utils.metrics import calc_accuracy
 
@@ -59,7 +54,7 @@ if __name__ == "__main__":
     learnable_named_parameters = model.learnable_named_parameters
     
     # Parallel!
-    # model = torch.nn.DataParallel(model).to(device)
+    model = torch.nn.DataParallel(model).to(device)
 
     #  ========================= TRAIN DATA =========================
     # 
