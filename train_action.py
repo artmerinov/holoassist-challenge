@@ -14,12 +14,15 @@ from src.opts.opts import parser
 from src.utils.reproducibility import make_reproducible
 from src.models.model import VideoModel
 from src.dataset.video_dataset import VideoDataset, prepare_clips_data
-from src.dataset.video_transforms import GroupMultiScaleCrop, Stack, ToTorchFormatTensor, GroupNormalize
+from src.dataset.video_transforms import GroupMultiScaleCrop, Stack, ToTorchFormatTensor, GroupNormalize, GroupScale, GroupRandomCrop
 from src.utils.meters import AverageMeter
 from src.utils.metrics import calc_accuracy
 
 
 if __name__ == "__main__":
+
+    # Check folders.
+    os.makedirs("checkpoints", exist_ok=True)
 
     # Reproducibility.
     # Set up initial random states.
@@ -29,25 +32,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args)
 
-    if args.dataset_name == 'holoassist':
-        num_classes = 1887 # actions
-    else:
-        raise NotImplementedError()
-    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = VideoModel(
-        num_classes=num_classes, 
+        num_classes=args.num_classes, 
         num_segments=args.num_segments, 
         base_model=args.base_model,
         fusion_mode=args.fusion_mode,
-        dropout=args.dropout,
-        verbose=True,
+        verbose=False,
     ).to(device)
-    # print(model)
 
+    input_size = model.input_size
     crop_size = model.crop_size
-    scale_size = model.scale_size
     input_mean = model.input_mean
     input_std = model.input_std
     div = model.div
@@ -69,7 +65,7 @@ if __name__ == "__main__":
         mode="train",
     )
     tr_transform = Compose([
-        GroupMultiScaleCrop(input_size=crop_size, scales=[1, .875]),
+        GroupMultiScaleCrop(input_size=input_size, scales=[1, .875]),
         Stack(),
         ToTorchFormatTensor(div=div),
         GroupNormalize(mean=input_mean, std=input_std),
@@ -92,7 +88,6 @@ if __name__ == "__main__":
         drop_last=True,
         pin_memory=False,
         prefetch_factor=args.prefetch_factor,
-        # pin_memory=True,
     )
 
     #  ========================= VALIDATION DATA =========================
@@ -130,7 +125,6 @@ if __name__ == "__main__":
         drop_last=False, 
         pin_memory=False,
         prefetch_factor=args.prefetch_factor,
-        # pin_memory=True,
     )
 
     # =====================================================================
@@ -214,7 +208,6 @@ if __name__ == "__main__":
             # Update the weights using optimizer
             optimizer.step()
 
-
             # Keep track of epoch metrics (for each batch)
             tr_epoch_loss.update(value=tr_loss.detach().item(), n=tr_x.size(0))
             tr_epoch_acc1.update(value=tr_acc1, n=tr_x.size(0))
@@ -292,9 +285,7 @@ if __name__ == "__main__":
               f"\n", flush=True)
         
         # Save model checkpoint
-        os.makedirs("checkpoints", exist_ok=True)
         checkpoint_fn = f"{args.dataset_name}_{args.base_model}_{args.fusion_mode}_action_{epoch:02d}.pth"
-        
         checkpoint = {
             "epoch": epoch,
             "model_state_dict": model.state_dict(),

@@ -14,7 +14,7 @@ import torch.nn.functional as F
 from src.opts.opts import parser
 from src.utils.reproducibility import make_reproducible
 from src.utils.meters import AverageMeter
-from src.utils.metrics import find_best_threshold, calc_metrics_by_threshold, save_vis_pr_curve
+from src.utils.metrics import find_threshold, calc_thr_metrics, save_clf_visualisation
 from src.dataset.video_dataset import VideoDataset, prepare_clips_data
 from src.dataset.video_transforms import GroupMultiScaleCrop, Stack, ToTorchFormatTensor, GroupNormalize
 from src.models.model import VideoModel
@@ -33,24 +33,16 @@ if __name__ == "__main__":
     # Load config.
     args = parser.parse_args()
     print(args)
-
-    # TODO: move num_classes to config
-    if args.dataset_name == 'holoassist':
-        num_classes = 2 # mistake or not
-    else:
-        raise NotImplementedError()
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = VideoModel(
-        num_classes=num_classes, 
+        num_classes=args.num_classes, 
         num_segments=args.num_segments, 
         base_model=args.base_model,
         fusion_mode=args.fusion_mode,
-        dropout=args.dropout,
         verbose=False,
     ).to(device)
-    # print(model)
 
     crop_size = model.crop_size
     scale_size = model.scale_size
@@ -62,9 +54,8 @@ if __name__ == "__main__":
     # Parallel!
     model = torch.nn.DataParallel(model).to(device)
 
-    # Load weigths from pretrained model using action recognition task
-    # TODO: move pretrained model to config
-    checkpoint = torch.load(f='checkpoints/holoassist_InceptionV3_GSF_action_10.pth', map_location=torch.device(device))
+    # Load weigths from action recognition model
+    checkpoint = torch.load(f="checkpoints/holoassist_InceptionV3_GSF_action_10.pth", map_location=torch.device(device))
     pretrained_dict = {k: v for k, v in checkpoint['model_state_dict'].items() if 'base_model.top_cls_fc' not in k}
     model.load_state_dict(state_dict=pretrained_dict, strict=False)
 
@@ -142,13 +133,6 @@ if __name__ == "__main__":
     )
 
     # =====================================================================
-
-    # TODO: try weighted loss function
-    # e.g. weight = torch.tensor([6/100, (100-6)/100]), 
-    # so 0.06 for class 0 (no mistake) and 0.96 for class 1 (mistake), 
-    # since mistake is more important
-    # or weigth = torch.tensor([6/6, 6/94])
-    # torch.tensor([6277/118482, (118482-6277)/118482]),
 
     criterion = nn.CrossEntropyLoss(
         weight=None
@@ -248,45 +232,28 @@ if __name__ == "__main__":
             tr_clips_processed_correct += (tr_y.detach() == 0).sum()
 
             if tr_batch_id % 20 == 0:
-
+                
+                # Probability-based
                 if tr_epoch_trues[:tr_clips_processed_total].sum() > 0:
-
-                    # Calculate running statistics
-                    # Note, that more recent predictions
-                    # are done with updated model, therefore, let's
-                    # use only 10000 recent predictions
-                    
-                    # TODO: rework window -> use exp moving average instead
-
-                    window_size = 10000
-                    window_st = max(0, tr_clips_processed_total - window_size)
-                    window_en = tr_clips_processed_total
-
-                    # Probability-based
                     tr_rocauc = roc_auc_score(
-                        y_true=tr_epoch_trues[window_st:window_en], 
-                        y_score=tr_epoch_probs[window_st:window_en, 1],
+                        y_true=tr_epoch_trues[:tr_clips_processed_total], 
+                        y_score=tr_epoch_probs[:tr_clips_processed_total, 1],
                         average="macro"
                     )
-
-                    # Threshold-based
-                    tr_thr = find_best_threshold(
-                        trues=tr_epoch_trues[window_st:window_en],
-                        probs=tr_epoch_probs[window_st:window_en],
-                    )
-                    tr_precision, tr_recall, tr_f1score = calc_metrics_by_threshold(
-                        thr=tr_thr,
-                        trues=tr_epoch_trues[window_st:window_en],
-                        probs=tr_epoch_probs[window_st:window_en],
-                    )
-
                 else:
                     # If there is only one class
                     tr_rocauc = 0.0
-                    tr_thr = 0.0
-                    tr_precision = 0.0
-                    tr_recall = 0.0
-                    tr_f1score = 0.0
+
+                # Threshold-based
+                tr_thr = find_threshold(
+                    y_true=tr_epoch_trues[:tr_clips_processed_total],
+                    y_score=tr_epoch_probs[:tr_clips_processed_total, 1],
+                )
+                tr_tp, tr_tn, tr_fp, tr_fn, tr_precision, tr_recall, tr_f1 = calc_thr_metrics(
+                    thr=tr_thr,
+                    y_true=tr_epoch_trues[:tr_clips_processed_total],
+                    y_score=tr_epoch_probs[:tr_clips_processed_total, 1],
+                )
 
                 print(f"batch_id={tr_batch_id:04d}/{len(tr_dataloader):04d}",
                       f"total={tr_clips_processed_total:06d}",
@@ -294,22 +261,34 @@ if __name__ == "__main__":
                       f"correct={tr_clips_processed_correct:06d}",
                       f"|",
                       f"epoch_loss={tr_epoch_loss.avg:.3f}",
-                      f"window_rocauc={tr_rocauc:.3f}",
+                      f"rocauc={tr_rocauc:.3f}",
                       f"|",
-                      f"thr={tr_thr:.3f}",
-                      f"window_precision={tr_precision:.3f}",
-                      f"window_recall={tr_recall:.3f}",
-                      f"window_f1score={tr_f1score:.3f}",
+                      f"thr={tr_thr:.3f} ->",
+                      f"tp={tr_tp:06d}",
+                      f"tn={tr_tn:06d}",
+                      f"fp={tr_fp:06d}",
+                      f"fn={tr_fn:06d}",
+                      f"precision={tr_precision:.3f}",
+                      f"recall={tr_recall:.3f}",
+                      f"f1={tr_f1:.3f}",
                       flush=True)
+                
+                # if tr_batch_id > 0 and tr_batch_id % 1000 == 0:
+
+                #     save_clf_visualisation(
+                #         y_true=tr_epoch_trues[:tr_clips_processed_total],
+                #         y_score=tr_epoch_probs[:tr_clips_processed_total, 1],
+                #         fname=f"pics/tr_PR_{epoch:02d}_{tr_batch_id:06d}.png"
+                #     )
+                #     print(classification_report(
+                #         y_true=tr_epoch_trues[:tr_clips_processed_total],
+                #         y_pred=(tr_epoch_probs[:tr_clips_processed_total, 1] >= tr_thr).int(), 
+                #         zero_division=True,
+                #         digits=3
+                #     ))
                 
             del tr_logits, tr_loss
 
-        print(classification_report(
-            y_true=tr_epoch_trues,
-            y_pred=(tr_epoch_probs[:,1] >= tr_thr).int(), 
-            zero_division=True,
-            digits=3
-        ))
 
         # Adjust learning rate after training epoch
         lr_scheduler.step()
@@ -352,38 +331,27 @@ if __name__ == "__main__":
                 
                 if va_batch_id % 10 == 0:
 
-                    # Calculate running statistics
-                    # Note, that the model is fixed here, therefore
-                    # we will use all predictions till thee current batch
-                    # to output statistics
-
+                    # Probability-based
                     if va_epoch_trues[:va_clips_processed_total].sum() > 0:
-                        
-                        # Probability-based
                         va_rocauc = roc_auc_score(
                             y_true=va_epoch_trues[:va_clips_processed_total], 
                             y_score=va_epoch_probs[:va_clips_processed_total, 1],
                             average="macro"
                         )
-
-                        # Threshold-based
-                        va_thr = find_best_threshold(
-                            trues=va_epoch_trues[:va_clips_processed_total],
-                            probs=va_epoch_probs[:va_clips_processed_total],
-                        )
-                        va_precision, va_recall, va_f1score = calc_metrics_by_threshold(
-                            thr=va_thr,
-                            trues=va_epoch_trues[:va_clips_processed_total],
-                            probs=va_epoch_probs[:va_clips_processed_total], 
-                        )
-
                     else:
                         # If there is only one class
                         va_rocauc = 0.0
-                        va_thr = 0.0
-                        va_precision = 0.0
-                        va_recall = 0.0
-                        va_f1score = 0.0
+
+                    # Threshold-based
+                    va_thr = find_threshold(
+                        y_true=va_epoch_trues[:va_clips_processed_total],
+                        y_score=va_epoch_probs[:va_clips_processed_total, 1],
+                    )
+                    va_tp, va_tn, va_fp, va_fn, va_precision, va_recall, va_f1 = calc_thr_metrics(
+                        thr=va_thr,
+                        y_true=va_epoch_trues[:va_clips_processed_total],
+                        y_score=va_epoch_probs[:va_clips_processed_total, 1], 
+                    )
 
                     print(f"batch_id={va_batch_id:04d}/{len(va_dataloader):04d}",
                           f"total={va_clips_processed_total:06d}",
@@ -393,41 +361,55 @@ if __name__ == "__main__":
                           f"epoch_loss={va_epoch_loss.avg:.3f}",
                           f"rocauc={va_rocauc:.3f}",
                           f"|",
-                          f"thr={va_thr:.3f}",
+                          f"thr={va_thr:.3f} ->",
+                          f"tp={va_tp:06d}",
+                          f"tn={va_tn:06d}",
+                          f"fp={va_fp:06d}",
+                          f"fn={va_fn:06d}",
                           f"precision={va_precision:.3f}",
                           f"recall={va_recall:.3f}",
-                          f"f1score={va_f1score:.3f}",
+                          f"f1={va_f1:.3f}",
                           flush=True)
                     
                 del va_logits, va_loss
 
-        print(classification_report(
-            y_true=va_epoch_trues,
-            y_pred=(va_epoch_probs[:,1] >= va_thr).int(), 
-            zero_division=True,
-            digits=3
-        ))
-        
+
         # Save model checkpoint
+        # -------------------------------
+        checkpoint_fn = f"{args.dataset_name}_{args.base_model}_{args.fusion_mode}_mistake_{epoch:02d}.pth"
         checkpoint = {
             "epoch": epoch,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             'lr_scheduler_state_dict': lr_scheduler.state_dict(),
         }
-        torch.save(
-            obj=checkpoint, 
-            f=f"checkpoints/{args.dataset_name}_{args.base_model}_{args.fusion_mode}_mistake_{epoch:02d}.pth"
-        )
+        torch.save(obj=checkpoint, f=f"checkpoints/{checkpoint_fn}")
+        print(f"Write model checkpoint {checkpoint_fn}", flush=True)
 
-        # Save pics
-        save_vis_pr_curve(
-            trues=va_epoch_trues,
-            probs=va_epoch_probs,
+        # Make classification report
+        # -------------------------------
+        print(classification_report(
+            y_true=tr_epoch_trues,
+            y_pred=(tr_epoch_probs[:, 1] >= tr_thr).int(), 
+            zero_division=True,
+            digits=4
+        ))
+        print(classification_report(
+            y_true=va_epoch_trues,
+            y_pred=(va_epoch_probs[:, 1] >= va_thr).int(), 
+            zero_division=True,
+            digits=4
+        ))
+
+        # Save classification pics
+        # -------------------------------
+        save_clf_visualisation(
+            y_true=va_epoch_trues,
+            y_score=va_epoch_probs[:, 1],
             fname=f"pics/va_PR_{epoch:02d}.png"
         )
-        save_vis_pr_curve(
-            trues=tr_epoch_trues,
-            probs=tr_epoch_probs,
+        save_clf_visualisation(
+            y_true=tr_epoch_trues,
+            y_score=tr_epoch_probs[:, 1],
             fname=f"pics/tr_PR_{epoch:02d}.png"
         )

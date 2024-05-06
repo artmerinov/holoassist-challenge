@@ -9,20 +9,17 @@ parser.add_argument("--raw_annotation_file", type=str, default="/Users/artemmeri
 parser.add_argument("--split_dir", type=str, default="/Users/artemmerinov/data/holoassist/data-splits-v1", help="Path to split directory.")
 parser.add_argument("--fine_grained_actions_map_file", type=str, default="/Users/artemmerinov/data/holoassist/fine_grained_actions_map.txt", help="Path fine-grained actions map file.")
 
-# ========================= Dataset ==========================
-parser.add_argument("--dataset_name", type=str, default="holoassist", help="Dataset name.")
-parser.add_argument("--fusion_mode", type=str, default=None, choices=["None", "GSF", "GSM"], help="Fusion mode.")
-
 # ========================= Model ==========================
-parser.add_argument("--base_model", type=str, default="BNInception", choices=["resnet50", "resnet101", "BNInception", "InceptionV3", "TimeSformer", "HORST"])
+parser.add_argument("--base_model", type=str, default="InceptionV3", choices=["InceptionV3", "TimeSformer", "HORST"])
+parser.add_argument("--fusion_mode", type=str, default=None, choices=["None", "GSF", "GSM"], help="Fusion mode.")
 parser.add_argument("--num_segments", type=int, default=8, help="Number of sampled frames from each video.")
-parser.add_argument("--dropout", type=float, default=0.5, help="Dropout ratio of last fc layer of base model.")
+parser.add_argument("--num_classes", type=int, default=1887, choices=[1887, 2], help="Number of labels.")
 
-# ========================== Load Model ==========================
+# ========================= Load Model =========================
 parser.add_argument("--resume", type=str, default=None, help="Path to model to continue learning.")
 parser.add_argument('--start-epoch', default=0, type=int, help="Epoch number.")
 
-# ========================= Learning ==========================
+# ========================= Learning =========================
 parser.add_argument("--num_epochs", type=int, default=10)
 parser.add_argument("--lr", type=float, default=0.01, help="Learning rate.")
 parser.add_argument("--momentum", type=float, default=0.9, help="Momentum.")

@@ -43,62 +43,76 @@ def calc_accuracy(preds: torch.Tensor,
     return accuracies
 
 
-def find_best_threshold(
-        trues:torch.Tensor, 
-        probs: torch.Tensor
-    ) -> float:
+def find_threshold(y_true: torch.Tensor, 
+                   y_score: torch.Tensor) -> float:
     """
-    Finds thresshold to maximise F1 score.
+    Finds threshold that maximises F1 score.
+
+    Args:
+        y_true: Ground truth labels.
+        y_score: Probabilities of positive class.
     """
-    thr_list = torch.unique(probs[:,1])
+    thr_list = torch.unique(y_score)
     f1score_list = torch.empty(len(thr_list), dtype=torch.float32)
 
     for i, thr in enumerate(thr_list):
 
-        preds = (probs[:,1] >= thr).int()
-
-        tp = torch.sum((trues == 1) & (preds == 1))
-        tn = torch.sum((trues == 0) & (preds == 0))
-        fp = torch.sum((trues == 0) & (preds == 1))
-        fn = torch.sum((trues == 1) & (preds == 0))
-
-        precision = tp / (tp + fp + 1e-6)
-        recall = tp / (tp + fn + 1e-6)
-        f1score = 2 * precision * recall / (precision + recall + 1e-6)
+        tp, tn, fp, fn, precision, recall, f1score = calc_thr_metrics(
+            thr=thr,
+            y_true=y_true,
+            y_score=y_score,
+        )
         f1score_list[i] = f1score
 
     # Choose threshold that maximise F1
-    # and calculate metrics.
-
     index = torch.argmax(f1score_list)
     thr = thr_list[index]
 
     return thr
 
 
-def calc_metrics_by_threshold(
+def calc_thr_metrics(
         thr: float,
-        trues:torch.Tensor, 
-        probs: torch.Tensor,
-    ) -> Tuple[float, float, float]:
+        y_true: torch.Tensor, 
+        y_score: torch.Tensor,
+    ) -> Tuple[float, ...]:
+    """
+    Calculate basic binary classification metrics 
+    based on threshold.
 
-    preds = (probs[:,1] >= thr).int()
+    Args:
+        thr: Threshold for label prediction.
+        y_true: Ground truth labels.
+        y_score: Probabilities of positive class.
+    """
+    y_pred = (y_score >= thr).int()
 
-    tp = torch.sum((trues == 1) & (preds == 1))
-    tn = torch.sum((trues == 0) & (preds == 0))
-    fp = torch.sum((trues == 0) & (preds == 1))
-    fn = torch.sum((trues == 1) & (preds == 0))
-    
+    tp = torch.sum((y_true == 1) & (y_pred == 1))
+    tn = torch.sum((y_true == 0) & (y_pred == 0))
+    fp = torch.sum((y_true == 0) & (y_pred == 1))
+    fn = torch.sum((y_true == 1) & (y_pred == 0))
+
     precision = tp / (tp + fp + 1e-6)
     recall = tp / (tp + fn + 1e-6)
     f1score = 2 * precision * recall / (precision + recall + 1e-6)
 
-    return precision, recall, f1score
+    return tp, tn, fp, fn, precision, recall, f1score
+    
 
+def save_clf_visualisation(
+        y_true: torch.Tensor, 
+        y_score: torch.Tensor, 
+        fname: str,
+    ) -> None:
+    """
+    Save visualisation of binary classification.
 
-def save_vis_pr_curve(trues, probs, fname):
-
-    thr_list = torch.unique(probs[:,1])
+    Args:
+        y_true: Ground truth labels.
+        y_score: Probabilities of positive class.
+        fname: Path to save image.
+    """
+    thr_list = torch.unique(y_score)
 
     f1score_list = torch.empty(len(thr_list), dtype=torch.float32)
     precision_list = torch.empty(len(thr_list), dtype=torch.float32)
@@ -106,16 +120,11 @@ def save_vis_pr_curve(trues, probs, fname):
 
     for i, thr in enumerate(thr_list):
 
-        preds = (probs[:,1] >= thr).int()
-
-        tp = torch.sum((trues == 1) & (preds == 1))
-        tn = torch.sum((trues == 0) & (preds == 0))
-        fp = torch.sum((trues == 0) & (preds == 1))
-        fn = torch.sum((trues == 1) & (preds == 0))
-
-        precision = tp / (tp + fp + 1e-6)
-        recall = tp / (tp + fn + 1e-6)
-        f1score = 2 * precision * recall / (precision + recall + 1e-6)
+        tp, tn, fp, fn, precision, recall, f1score = calc_thr_metrics(
+            thr=thr,
+            y_true=y_true,
+            y_score=y_score,
+        )
         
         f1score_list[i] = f1score
         precision_list[i] = precision
