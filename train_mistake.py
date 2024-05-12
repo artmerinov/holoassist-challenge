@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 from torchvision.transforms import Compose
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
 import torch.nn.functional as F
 
 from src.opts.opts import parser
@@ -144,11 +144,16 @@ if __name__ == "__main__":
         momentum=args.momentum,
         weight_decay=args.weight_decay
     )
-    lr_scheduler = CosineAnnealingLR(
-        optimizer=optimizer, 
-        T_max=args.num_epochs, 
-        eta_min=1e-7, 
-        last_epoch=-1
+    # lr_scheduler = CosineAnnealingLR(
+    #     optimizer=optimizer, 
+    #     T_max=args.num_epochs, 
+    #     eta_min=1e-7, 
+    #     last_epoch=-1
+    # )
+    lr_scheduler = MultiStepLR(
+        optimizer=optimizer,
+        milestones=[11, 14],
+        gamma=0.1
     )
 
     if args.resume:
@@ -156,13 +161,15 @@ if __name__ == "__main__":
 
             # Load checkpoint file that contains all the states
             print(f"=> Loading checkpoint {args.resume}")
+            
+            # Load state into model from checkpoint
             checkpoint = torch.load(f=args.resume)
-
-            # Load state from checkpoint
             model.load_state_dict(state_dict=checkpoint['model_state_dict'])
-            optimizer.load_state_dict(state_dict=checkpoint['optimizer_state_dict'])
-            lr_scheduler.load_state_dict(state_dict=checkpoint['lr_scheduler_state_dict'])
+
             args.start_epoch = checkpoint['epoch'] + 1
+            for i in range(args.start_epoch):
+                optimizer.step()
+                lr_scheduler.step()
         else:
             raise ValueError(f"=> No checkpoint found at {args.resume}")
         
@@ -376,7 +383,7 @@ if __name__ == "__main__":
 
         # Save model checkpoint
         # -------------------------------
-        checkpoint_fn = f"{args.dataset_name}_{args.base_model}_{args.fusion_mode}_mistake_{epoch:02d}.pth"
+        checkpoint_fn = f"holoassist_{args.base_model}_{args.fusion_mode}_mistake_{epoch:02d}.pth"
         checkpoint = {
             "epoch": epoch,
             "model_state_dict": model.state_dict(),
