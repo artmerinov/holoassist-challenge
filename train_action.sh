@@ -50,7 +50,7 @@ nohup python3 -B train_action.py \
     --num_classes 1887 \
     --base_model HORST \
     --resume /data/amerinov/projects/holoassist/checkpoints/holoassist_HORST_None_action_13.pth \
-    --num_epochs 20 \
+    --num_epochs 30 \
     --batch_size 16 \
     --prefetch_factor 4 \
     --num_segments 8 \
