@@ -30,3 +30,4 @@ parser.add_argument("--clip_gradient", type=float, default=None, help="Gradient 
 parser.add_argument("--batch_size", type=int, default=16)
 parser.add_argument("--num_workers", type=int, default=4, help="Number of workers in dataloader.")
 parser.add_argument("--prefetch_factor", type=int, default=2, help="Number of batches loaded in advance by each worker.")
+parser.add_argument("--debug", type=bool, default=False, help="Dubug mode, where only small portion of data is used.")

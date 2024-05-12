@@ -19,6 +19,7 @@ def prepare_clips_data(
         split_dir: str,
         fine_grained_actions_map_file: str,
         mode: Literal["train", "validation", "test"] = "train",
+        debug: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 
     annotation = prepare_annotation(
@@ -30,8 +31,8 @@ def prepare_clips_data(
         mode=mode
     )
     
-    # TODO: THIS IS TEMPORARY (NEED TO BE REMOVED)
-    # video_name_list = video_name_list[::100]
+    if debug:
+        video_name_list = video_name_list[::100]
     
     # Find total number of clips in videos
     # considering given mode (train/validation/test)
