@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 from torchvision.transforms import Compose
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
 
 from src.opts.opts import parser
 from src.utils.reproducibility import make_reproducible
@@ -50,7 +50,8 @@ if __name__ == "__main__":
     learnable_named_parameters = model.learnable_named_parameters
     
     # Parallel!
-    model = torch.nn.DataParallel(model).to(device)
+    if args.base_model != "HORST":
+        model = torch.nn.DataParallel(model).to(device)
 
     #  ========================= TRAIN DATA =========================
     # 
@@ -137,11 +138,16 @@ if __name__ == "__main__":
         momentum=args.momentum,
         weight_decay=args.weight_decay
     )
-    lr_scheduler = CosineAnnealingLR(
-        optimizer=optimizer, 
-        T_max=args.num_epochs, 
-        eta_min=1e-7, 
-        last_epoch=-1
+    # lr_scheduler = CosineAnnealingLR(
+    #     optimizer=optimizer, 
+    #     T_max=args.num_epochs, 
+    #     eta_min=1e-7, 
+    #     last_epoch=-1
+    # )
+    lr_scheduler = MultiStepLR(
+        optimizer=optimizer,
+        milestones=[11, 21],
+        gamma=0.1
     )
 
     if args.resume:
@@ -149,13 +155,15 @@ if __name__ == "__main__":
 
             # Load checkpoint file that contains all the states
             print(f"=> Loading checkpoint {args.resume}")
+            
+            # Load state into model from checkpoint
             checkpoint = torch.load(f=args.resume)
-
-            # Load state from checkpoint
             model.load_state_dict(state_dict=checkpoint['model_state_dict'])
-            optimizer.load_state_dict(state_dict=checkpoint['optimizer_state_dict'])
-            lr_scheduler.load_state_dict(state_dict=checkpoint['lr_scheduler_state_dict'])
+
             args.start_epoch = checkpoint['epoch'] + 1
+            for i in range(args.start_epoch):
+                optimizer.step()
+                lr_scheduler.step()
         else:
             raise ValueError(f"=> No checkpoint found at {args.resume}")
         
@@ -193,17 +201,32 @@ if __name__ == "__main__":
             tr_loss = criterion(tr_preds, tr_y)
             tr_acc1, tr_acc5  = calc_accuracy(preds=tr_preds, labels=tr_y, topk=(1,5))
 
-            # Zero the gradients
+            # Set the gradients to None after calling backward(), rather than set to zero. 
+            # This can save memory, especially when dealing with large models or long sequences, 
+            # where the gradients are sparse.
             optimizer.zero_grad(set_to_none=True)
 
             # Compute gradient of the loss wrt all learnable parameters
             tr_loss.backward()
+            
+            # # Check the norm of gradients
+            # total_norm1 = 0
+            # for p in model.parameters():
+            #     if p.grad is not None:
+            #         param_norm = p.grad.data.norm(2)
+            #         total_norm1 += param_norm.item() ** 2
+            # total_norm1 = total_norm1 ** (1. / 2)
 
             # Clip computed gradients
             if args.clip_gradient is not None:
-                total_norm = clip_grad_norm_(parameters=model.parameters(), max_norm=args.clip_gradient)
-                # if total_norm > args.clip_gradient:
-                #     print(f"Clipping gradient: {total_norm} with coef {args.clip_gradient / total_norm}")
+                # Save the grad norm over all gradients together for debugging
+                # (to set up reasonable max value). This variable stores grad
+                # norm before clipping, however, gradients are modified in-place.
+                grad_norm = clip_grad_norm_(
+                    parameters=model.parameters(), 
+                    max_norm=args.clip_gradient,
+                    norm_type=2
+                )
             
             # Update the weights using optimizer
             optimizer.step()
@@ -223,6 +246,8 @@ if __name__ == "__main__":
                       f"tr_epoch_loss={tr_epoch_loss.avg:.3f}",
                       f"tr_epoch_acc@1={tr_epoch_acc1.avg:.3f}",
                       f"tr_epoch_acc@5={tr_epoch_acc5.avg:.3f}",
+                      f"|",
+                      f"grad_norm={grad_norm:.3f}",
                       flush=True)
                 
             del tr_preds, tr_loss, tr_acc1, tr_acc5, tr_batch, tr_x, tr_y
@@ -285,7 +310,7 @@ if __name__ == "__main__":
               f"\n", flush=True)
         
         # Save model checkpoint
-        checkpoint_fn = f"{args.dataset_name}_{args.base_model}_{args.fusion_mode}_action_{epoch:02d}.pth"
+        checkpoint_fn = f"holoassist_{args.base_model}_{args.fusion_mode}_action_{epoch:02d}.pth"
         checkpoint = {
             "epoch": epoch,
             "model_state_dict": model.state_dict(),
