@@ -87,6 +87,7 @@ class VideoDataset(Dataset):
             num_segments: int = 8,
             transform: Callable = None,
             mode: Literal["train", "validation", "test"] = "train",
+            use_hands: bool = False,
         ) -> None:
 
         self.clip_path_to_video_arr = clip_path_to_video_arr
@@ -97,6 +98,7 @@ class VideoDataset(Dataset):
         self.num_segments = num_segments
         self.transform = transform
         self.mode = mode
+        self.use_hands = use_hands
 
     def __getitem__(self, index):
 
@@ -104,6 +106,9 @@ class VideoDataset(Dataset):
         clip_start = self.clip_start_arr[index]
         clip_end = self.clip_end_arr[index]
         clip_label = self.clip_label_arr[index]
+
+        # ------------------- RGB -------------------
+        # 
 
         # Extract frames from video using start and end time. 
         frames = load_av_frames_from_video(
@@ -113,7 +118,7 @@ class VideoDataset(Dataset):
         )
 
         # Perform temporal sampling
-        frames = temporal_sampling(
+        sampling_portions, frames = temporal_sampling(
             frames=frames,
             num_segments=self.num_segments,
             mode=self.mode
@@ -125,6 +130,13 @@ class VideoDataset(Dataset):
         # Perform spatial sampling and apply transformations
         if self.transform:
             frames = self.transform(frames)
+
+        # ------------------- HANDS -------------------
+
+        # Extract hands skeleton data using start and end time.
+        if self.use_hands:
+            # TODO: normalise
+            raise NotImplementedError()
         
         return frames, clip_label
 

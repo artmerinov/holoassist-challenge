@@ -1,15 +1,14 @@
-import torch
-from typing import List
 import numpy as np
 from numpy.random import randint
 import av
+from typing import Tuple, List
 
 
 def temporal_sampling(
         frames: List[av.video.frame.VideoFrame],
         num_segments: int,
         mode: str = "train",
-    ) -> List[av.video.frame.VideoFrame]:
+    ) -> Tuple[np.ndarray, List[av.video.frame.VideoFrame]]:
     """
     Given the list of frames, sample `num_samples` frames.
     """
@@ -28,4 +27,11 @@ def temporal_sampling(
         raise NotImplementedError()
     
     frames =  [frames[i] for i in segment_indices]
-    return frames
+
+    # Since other modalities might have different frequencies,
+    # we will also output the time portions of sampled frames.
+    # So, we can easily select syncronised data from other modalities 
+    # based on this sampling.
+    sampling_portions = segment_indices / num_frames
+    
+    return sampling_portions, frames
