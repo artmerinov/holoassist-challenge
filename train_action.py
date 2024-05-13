@@ -64,6 +64,7 @@ if __name__ == "__main__":
         split_dir=args.split_dir,
         fine_grained_actions_map_file=args.fine_grained_actions_map_file,
         mode="train",
+        debug=args.debug,
     )
     tr_transform = Compose([
         GroupMultiScaleCrop(input_size=input_size, scales=[1, .875]),
@@ -102,6 +103,7 @@ if __name__ == "__main__":
         split_dir=args.split_dir,
         fine_grained_actions_map_file=args.fine_grained_actions_map_file,
         mode="validation",
+        debug=args.debug,
     )
     va_transform = Compose([
         GroupMultiScaleCrop(input_size=crop_size, scales=[1, .875]),
@@ -190,10 +192,9 @@ if __name__ == "__main__":
             tr_x = tr_batch[0].to(device) # video batch with image sequences [n, t_c, h, w]
             tr_y = tr_batch[1].to(device) # video batch labels [n]
 
-            # Make predictions for train batch
+            # Perform forward pass
             tr_preds = model(tr_x)
             tr_loss = criterion(tr_preds, tr_y)
-            tr_acc1, tr_acc5  = calc_accuracy(preds=tr_preds, labels=tr_y, topk=(1,5))
 
             # Set the gradients to None after calling backward(), rather than set to zero. 
             # This can save memory, especially when dealing with large models or long sequences, 
@@ -217,7 +218,10 @@ if __name__ == "__main__":
             # Update the weights using optimizer
             optimizer.step()
 
-            # Keep track of epoch metrics (for each batch)
+            # Calculate batch metrics
+            tr_acc1, tr_acc5  = calc_accuracy(preds=tr_preds, labels=tr_y, topk=(1,5))
+
+            # Keep track of epoch metrics (update for each batch)
             tr_epoch_loss.update(value=tr_loss.detach().item(), n=tr_x.size(0))
             tr_epoch_acc1.update(value=tr_acc1, n=tr_x.size(0))
             tr_epoch_acc5.update(value=tr_acc5, n=tr_x.size(0))
@@ -225,16 +229,17 @@ if __name__ == "__main__":
             if tr_batch_id % 20 == 0:
 
                 print(f"tr_batch_id={tr_batch_id:04d}/{len(tr_dataloader):04d}",
-                      f"tr_batch_loss={tr_loss.detach().item():.3f}",
-                      f"tr_batch_acc@1={tr_acc1:.3f}",
-                      f"tr_batch_acc@5={tr_acc5:.3f}",
-                      f"|",
-                      f"tr_epoch_loss={tr_epoch_loss.avg:.3f}",
-                      f"tr_epoch_acc@1={tr_epoch_acc1.avg:.3f}",
-                      f"tr_epoch_acc@5={tr_epoch_acc5.avg:.3f}",
-                      f"|",
-                      f"grad_norm={grad_norm:.3f}",
-                      flush=True)
+                    f"tr_batch_loss={tr_loss.detach().item():.3f}",
+                    f"tr_batch_acc@1={tr_acc1:.3f}",
+                    f"tr_batch_acc@5={tr_acc5:.3f}",
+                    f"|",
+                    f"tr_epoch_loss={tr_epoch_loss.avg:.3f}",
+                    f"tr_epoch_acc@1={tr_epoch_acc1.avg:.3f}",
+                    f"tr_epoch_acc@5={tr_epoch_acc5.avg:.3f}",
+                    f"|",
+                    f"grad_norm={grad_norm:.3f}",
+                    f"time={datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}",
+                    flush=True)
                 
             del tr_preds, tr_loss, tr_acc1, tr_acc5, tr_batch, tr_x, tr_y
             gc.collect()
@@ -276,11 +281,14 @@ if __name__ == "__main__":
                           f"va_epoch_loss={va_epoch_loss.avg:.3f}",
                           f"va_epoch_acc@1={va_epoch_acc1.avg:.3f}",
                           f"va_epoch_acc@5={va_epoch_acc5.avg:.3f}",
+                          f"|",
+                          f"time={datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}",
                           flush=True)
                 
                 del va_preds, va_loss, va_acc1, va_acc5, va_batch, va_x, va_y
                 gc.collect()
-                # torch.cuda.empty_cache() # expensive call
+
+        # ----------------------------------------------------------------------------------
 
         print()
         print(f"Epoch {epoch:02d} statistics", flush=True)

@@ -32,7 +32,7 @@ def prepare_clips_data(
     )
     
     if debug:
-        video_name_list = video_name_list[::100]
+        video_name_list = video_name_list[::10]
     
     # Find total number of clips in videos
     # considering given mode (train/validation/test)
