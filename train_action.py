@@ -138,15 +138,9 @@ if __name__ == "__main__":
         momentum=args.momentum,
         weight_decay=args.weight_decay
     )
-    # lr_scheduler = CosineAnnealingLR(
-    #     optimizer=optimizer, 
-    #     T_max=args.num_epochs, 
-    #     eta_min=1e-7, 
-    #     last_epoch=-1
-    # )
     lr_scheduler = MultiStepLR(
         optimizer=optimizer,
-        milestones=[11, 21],
+        milestones=[11, 14],
         gamma=0.1
     )
 
@@ -209,19 +203,11 @@ if __name__ == "__main__":
             # Compute gradient of the loss wrt all learnable parameters
             tr_loss.backward()
             
-            # # Check the norm of gradients
-            # total_norm1 = 0
-            # for p in model.parameters():
-            #     if p.grad is not None:
-            #         param_norm = p.grad.data.norm(2)
-            #         total_norm1 += param_norm.item() ** 2
-            # total_norm1 = total_norm1 ** (1. / 2)
-
             # Clip computed gradients
             if args.clip_gradient is not None:
                 # Save the grad norm over all gradients together for debugging
-                # (to set up reasonable max value). This variable stores grad
-                # norm before clipping, however, gradients are modified in-place.
+                # purposes (to set up reasonable max value). This variable stores 
+                # grad norm before clipping, however, gradients are modified in-place.
                 grad_norm = clip_grad_norm_(
                     parameters=model.parameters(), 
                     max_norm=args.clip_gradient,
@@ -252,7 +238,6 @@ if __name__ == "__main__":
                 
             del tr_preds, tr_loss, tr_acc1, tr_acc5, tr_batch, tr_x, tr_y
             gc.collect()
-            # torch.cuda.empty_cache() # expensive call
         
         # Adjust learning rate after training epoch
         lr_scheduler.step()

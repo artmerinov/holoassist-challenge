@@ -144,12 +144,6 @@ if __name__ == "__main__":
         momentum=args.momentum,
         weight_decay=args.weight_decay
     )
-    # lr_scheduler = CosineAnnealingLR(
-    #     optimizer=optimizer, 
-    #     T_max=args.num_epochs, 
-    #     eta_min=1e-7, 
-    #     last_epoch=-1
-    # )
     lr_scheduler = MultiStepLR(
         optimizer=optimizer,
         milestones=[11, 14],
