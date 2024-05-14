@@ -45,7 +45,6 @@ if __name__ == "__main__":
     ).to(device)
 
     crop_size = model.crop_size
-    scale_size = model.scale_size
     input_mean = model.input_mean
     input_std = model.input_std
     div = model.div
@@ -55,7 +54,7 @@ if __name__ == "__main__":
     model = torch.nn.DataParallel(model).to(device)
 
     # Load weigths from action recognition model
-    checkpoint = torch.load(f="checkpoints/holoassist_InceptionV3_GSF_action_10.pth", map_location=torch.device(device))
+    checkpoint = torch.load(f="checkpoints/holoassist_InceptionV3_GSF_action_10.pth", map_location=device)
     pretrained_dict = {k: v for k, v in checkpoint['model_state_dict'].items() if 'base_model.top_cls_fc' not in k}
     model.load_state_dict(state_dict=pretrained_dict, strict=False)
 
@@ -203,7 +202,7 @@ if __name__ == "__main__":
             tr_x = tr_batch[0].to(device) # video batch with image sequences [n, t_c, h, w]
             tr_y = tr_batch[1].to(device) # video batch labels [n]
 
-            # Make predictions for train batch
+            # Perform forward pass
             tr_logits = model(tr_x)
             tr_loss = criterion(tr_logits, tr_y)
 
@@ -215,8 +214,15 @@ if __name__ == "__main__":
 
             # Clip computed gradients
             if args.clip_gradient is not None:
-                total_norm = clip_grad_norm_(parameters=model.parameters(), max_norm=args.clip_gradient)
-            
+                # Save the grad norm over all gradients together for debugging
+                # purposes (to set up reasonable max value). This variable stores 
+                # grad norm before clipping, however, gradients are modified in-place.
+                grad_norm = clip_grad_norm_(
+                    parameters=model.parameters(), 
+                    max_norm=args.clip_gradient,
+                    norm_type=2
+                )
+
             # Update the weights using optimizer
             optimizer.step()
 
@@ -232,7 +238,7 @@ if __name__ == "__main__":
             tr_clips_processed_mistake += (tr_y.detach() == 1).sum()
             tr_clips_processed_correct += (tr_y.detach() == 0).sum()
 
-            if tr_batch_id % 20 == 0:
+            if tr_batch_id % 100 == 0:
                 
                 # Probability-based
                 if tr_epoch_trues[:tr_clips_processed_total].sum() > 0:
@@ -264,7 +270,7 @@ if __name__ == "__main__":
                       f"epoch_loss={tr_epoch_loss.avg:.3f}",
                       f"rocauc={tr_rocauc:.3f}",
                       f"|",
-                      f"thr={tr_thr:.3f} ->",
+                      f"thr={tr_thr:.5f} ->",
                       f"tp={tr_tp:06d}",
                       f"tn={tr_tn:06d}",
                       f"fp={tr_fp:06d}",
@@ -272,21 +278,10 @@ if __name__ == "__main__":
                       f"precision={tr_precision:.3f}",
                       f"recall={tr_recall:.3f}",
                       f"f1={tr_f1:.3f}",
+                      f"|",
+                      f"grad_norm={grad_norm:.3f}",
+                      f"time={datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}",
                       flush=True)
-                
-                # if tr_batch_id > 0 and tr_batch_id % 1000 == 0:
-
-                #     save_clf_visualisation(
-                #         y_true=tr_epoch_trues[:tr_clips_processed_total],
-                #         y_score=tr_epoch_probs[:tr_clips_processed_total, 1],
-                #         fname=f"pics/tr_PR_{epoch:02d}_{tr_batch_id:06d}.png"
-                #     )
-                #     print(classification_report(
-                #         y_true=tr_epoch_trues[:tr_clips_processed_total],
-                #         y_pred=(tr_epoch_probs[:tr_clips_processed_total, 1] >= tr_thr).int(), 
-                #         zero_division=True,
-                #         digits=3
-                #     ))
                 
             del tr_logits, tr_loss
 
@@ -355,6 +350,7 @@ if __name__ == "__main__":
                     )
 
                     print(f"batch_id={va_batch_id:04d}/{len(va_dataloader):04d}",
+                          f"|",
                           f"total={va_clips_processed_total:06d}",
                           f"mistake={va_clips_processed_mistake:06d}",
                           f"correct={va_clips_processed_correct:06d}",
@@ -362,7 +358,7 @@ if __name__ == "__main__":
                           f"epoch_loss={va_epoch_loss.avg:.3f}",
                           f"rocauc={va_rocauc:.3f}",
                           f"|",
-                          f"thr={va_thr:.3f} ->",
+                          f"thr={va_thr:.5f} ->",
                           f"tp={va_tp:06d}",
                           f"tn={va_tn:06d}",
                           f"fp={va_fp:06d}",
@@ -370,6 +366,8 @@ if __name__ == "__main__":
                           f"precision={va_precision:.3f}",
                           f"recall={va_recall:.3f}",
                           f"f1={va_f1:.3f}",
+                          f"|",
+                          f"time={datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}",
                           flush=True)
                     
                 del va_logits, va_loss
