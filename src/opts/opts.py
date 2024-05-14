@@ -10,7 +10,7 @@ parser.add_argument("--split_dir", type=str, default="/Users/artemmerinov/data/h
 parser.add_argument("--fine_grained_actions_map_file", type=str, default="/Users/artemmerinov/data/holoassist/fine_grained_actions_map.txt", help="Path fine-grained actions map file.")
 
 # ========================= Model ==========================
-parser.add_argument("--base_model", type=str, default="InceptionV3", choices=["InceptionV3", "TimeSformer", "HORST"])
+parser.add_argument("--base_model", type=str, default="InceptionV3", choices=["ResNet50", "ResNet101", "InceptionV3", "TimeSformer", "HORST"])
 parser.add_argument("--fusion_mode", type=str, default=None, choices=["None", "GSF", "GSM"], help="Fusion mode.")
 parser.add_argument("--num_segments", type=int, default=8, help="Number of sampled frames from each video.")
 parser.add_argument("--num_classes", type=int, default=1887, choices=[1887, 2], help="Number of labels.")

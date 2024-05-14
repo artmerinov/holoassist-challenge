@@ -26,6 +26,10 @@ class VideoModel(nn.Module):
             self._prepare_horst()
         elif self.base_model_name == "InceptionV3":
             self._prepare_inceptionv3()
+        elif self.base_model_name == "ResNet50":
+            self._prepare_resnet50()
+        elif self.base_model_name == "ResNet101":
+            self._prepare_resnet101()
         else:
             raise ValueError()
 
@@ -143,6 +147,82 @@ class VideoModel(nn.Module):
         # Initialize weights and biases of new fully-connected layer.
         normal_(replacement[1].weight, mean=0, std=0.001)
         constant_(replacement[1].bias, val=0)
+
+    def _prepare_resnet50(self):
+
+        if self.fusion_mode == "GSF":
+            print(f"=> Using {self.fusion_mode} fusion")
+            from ..archs.resnet_gsf import resnet50
+
+            self.gsf_ch_ratio = 100
+            self.base_model = resnet50(
+                pretrained=True,
+                num_segments=self.num_segments,
+                gsf_ch_ratio=self.gsf_ch_ratio
+            )
+        else:
+            raise NotImplementedError()
+        
+        self.base_model.last_layer_name = 'fc'
+        self.input_space = "RGB"
+        self.input_size = 224
+        self.input_range = [0, 1]
+        self.div = True
+        self.input_mean = [0.485, 0.456, 0.406]
+        self.input_std = [0.229, 0.224, 0.225]
+        
+        # Get the number of input features of the last layer of base model.
+        feature_dim = getattr(self.base_model, self.base_model.last_layer_name).in_features
+        
+        # Replace the last layer with a dropout layer and new fully-connected layer. 
+        self.dropout = 0.5
+        replacement = nn.Sequential(
+            nn.Dropout(p=self.dropout),
+            nn.Linear(feature_dim, self.num_classes)
+        )
+        setattr(self.base_model, self.base_model.last_layer_name, replacement)
+        
+        # Initialize weights and biases of new fully-connected layer.
+        normal_(replacement[1].weight, mean=0, std=0.001)
+        constant_(replacement[1].bias, val=0)
+
+    def _prepare_resnet101(self):
+
+        if self.fusion_mode == "GSF":
+            print(f"=> Using {self.fusion_mode} fusion")
+            from ..archs.resnet_gsf import resnet101
+
+            self.gsf_ch_ratio = 100
+            self.base_model = resnet101(
+                pretrained=True,
+                num_segments=self.num_segments,
+                gsf_ch_ratio=self.gsf_ch_ratio
+            )
+        else:
+            raise NotImplementedError()
+        
+        self.base_model.last_layer_name = 'fc'
+        self.input_space = "RGB"
+        self.input_size = 224
+        self.input_range = [0, 1]
+        self.div = True
+        self.input_mean = [0.485, 0.456, 0.406]
+        self.input_std = [0.229, 0.224, 0.225]
+        
+        # Get the number of input features of the last layer of base model.
+        feature_dim = getattr(self.base_model, self.base_model.last_layer_name).in_features
+        
+        # Replace the last layer with a dropout layer and new fully-connected layer. 
+        self.dropout = 0.5
+        replacement = nn.Sequential(
+            nn.Dropout(p=self.dropout),
+            nn.Linear(feature_dim, self.num_classes)
+        )
+        setattr(self.base_model, self.base_model.last_layer_name, replacement)
+        
+        # Initialize weights and biases of new fully-connected layer.
+        normal_(replacement[1].weight, mean=0, std=0.001)
+        constant_(replacement[1].bias, val=0)
     
     def forward(self, x):
         
@@ -172,7 +252,7 @@ class VideoModel(nn.Module):
             clip_logits = frame_logits[:, -1, :]
             return clip_logits
         
-        elif self.base_model_name == "InceptionV3":
+        elif self.base_model_name in ["ResNet50", "ResNet101", "InceptionV3"]:
             # (!) it is important to have (t c) and not (c t)
             x = Rearrange("n (t c) h w -> (n t) c h w", n=n, c=c, t=t, h=h, w=w)(x) # [16*5, 3, 224, 224]
             x = self.base_model(x) # [16*5, num_classes]

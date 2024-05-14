@@ -14,7 +14,7 @@ from src.opts.opts import parser
 from src.utils.reproducibility import make_reproducible
 from src.models.model import VideoModel
 from src.dataset.video_dataset import VideoDataset, prepare_clips_data
-from src.dataset.video_transforms import GroupMultiScaleCrop, Stack, ToTorchFormatTensor, GroupNormalize, GroupScale, GroupRandomCrop
+from src.dataset.video_transforms import GroupMultiScaleCrop, Stack, ToTorchFormatTensor, GroupNormalize
 from src.utils.meters import AverageMeter
 from src.utils.metrics import calc_accuracy
 
@@ -226,20 +226,21 @@ if __name__ == "__main__":
             tr_epoch_acc1.update(value=tr_acc1, n=tr_x.size(0))
             tr_epoch_acc5.update(value=tr_acc5, n=tr_x.size(0))
 
-            if tr_batch_id % 20 == 0:
+            if tr_batch_id % 100 == 0:
 
                 print(f"tr_batch_id={tr_batch_id:04d}/{len(tr_dataloader):04d}",
-                    f"tr_batch_loss={tr_loss.detach().item():.3f}",
-                    f"tr_batch_acc@1={tr_acc1:.3f}",
-                    f"tr_batch_acc@5={tr_acc5:.3f}",
-                    f"|",
-                    f"tr_epoch_loss={tr_epoch_loss.avg:.3f}",
-                    f"tr_epoch_acc@1={tr_epoch_acc1.avg:.3f}",
-                    f"tr_epoch_acc@5={tr_epoch_acc5.avg:.3f}",
-                    f"|",
-                    f"grad_norm={grad_norm:.3f}",
-                    f"time={datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}",
-                    flush=True)
+                      f"|",
+                      f"tr_batch_loss={tr_loss.detach().item():.3f}",
+                      f"tr_batch_acc@1={tr_acc1:.3f}",
+                      f"tr_batch_acc@5={tr_acc5:.3f}",
+                      f"|",
+                      f"tr_epoch_loss={tr_epoch_loss.avg:.3f}",
+                      f"tr_epoch_acc@1={tr_epoch_acc1.avg:.3f}",
+                      f"tr_epoch_acc@5={tr_epoch_acc5.avg:.3f}",
+                      f"|",
+                      f"grad_norm={grad_norm:.3f}",
+                      f"time={datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}",
+                      flush=True)
                 
             del tr_preds, tr_loss, tr_acc1, tr_acc5, tr_batch, tr_x, tr_y
             gc.collect()
@@ -274,6 +275,7 @@ if __name__ == "__main__":
                 
                 if va_batch_id % 10 == 0:
                     print(f"va_batch_id={va_batch_id:04d}/{len(va_dataloader):04d}",
+                          f"|",
                           f"va_batch_loss={va_loss.detach().item():.3f}",
                           f"va_batch_acc@1={va_acc1:.3f}",
                           f"va_batch_acc@5={va_acc5:.3f}",

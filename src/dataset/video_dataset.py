@@ -31,7 +31,7 @@ def prepare_clips_data(
         mode=mode
     )
     
-    if debug:
+    if debug == True:
         video_name_list = video_name_list[::10]
     
     # Find total number of clips in videos
