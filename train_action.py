@@ -50,20 +50,21 @@ if __name__ == "__main__":
     learnable_named_parameters = model.learnable_named_parameters
     
     # Parallel!
-    if args.base_model != "HORST":
-        model = torch.nn.DataParallel(model).to(device)
+    # if args.base_model != "HORST":
+    #     model = torch.nn.DataParallel(model).to(device)
 
     #  ========================= TRAIN DATA =========================
     # 
 
     print("tr_dataset", flush=True)
 
-    tr_clip_path_to_video_arr, tr_clip_start_arr, tr_clip_end_arr, tr_clip_action_id_arr, _ = prepare_clips_data(
+    tr_video_name_arr, tr_start_arr, tr_end_arr, tr_label_arr = prepare_clips_data(
         raw_annotation_file=args.raw_annotation_file,
-        holoassist_dir=args.holoassist_dir,
+        holoassist_dir=args.holoassist_dir, 
         split_dir=args.split_dir,
-        fine_grained_actions_map_file=args.fine_grained_actions_map_file,
+        fga_map_file=args.fga_map_file,
         mode="train",
+        task="action",
         debug=args.debug,
     )
     tr_transform = Compose([
@@ -72,15 +73,15 @@ if __name__ == "__main__":
         ToTorchFormatTensor(div=div),
         GroupNormalize(mean=input_mean, std=input_std),
     ])
-
     tr_dataset = VideoDataset(
-        clip_path_to_video_arr=tr_clip_path_to_video_arr,
-        clip_start_arr=tr_clip_start_arr,
-        clip_end_arr=tr_clip_end_arr,
-        clip_label_arr=tr_clip_action_id_arr,
+        holoassist_dir=args.holoassist_dir,
+        video_name_arr=tr_video_name_arr,
+        start_arr=tr_start_arr,
+        end_arr=tr_end_arr,
+        label_arr=tr_label_arr,
         num_segments=args.num_segments,
         transform=tr_transform,
-        mode="train"
+        mode="train",
     )
     tr_dataloader = DataLoader(
         dataset=tr_dataset, 
@@ -97,12 +98,13 @@ if __name__ == "__main__":
 
     print("va_dataset", flush=True)
 
-    va_clip_path_to_video_arr, va_clip_start_arr, va_clip_end_arr, va_clip_action_id_arr, _ = prepare_clips_data(
+    va_video_name_arr, va_start_arr, va_end_arr, va_label_arr = prepare_clips_data(
         raw_annotation_file=args.raw_annotation_file,
         holoassist_dir=args.holoassist_dir, 
         split_dir=args.split_dir,
-        fine_grained_actions_map_file=args.fine_grained_actions_map_file,
+        fga_map_file=args.fga_map_file,
         mode="validation",
+        task="action",
         debug=args.debug,
     )
     va_transform = Compose([
@@ -112,13 +114,14 @@ if __name__ == "__main__":
         GroupNormalize(mean=input_mean, std=input_std),
     ])
     va_dataset = VideoDataset(
-        clip_path_to_video_arr=va_clip_path_to_video_arr,
-        clip_start_arr=va_clip_start_arr,
-        clip_end_arr=va_clip_end_arr,
-        clip_label_arr=va_clip_action_id_arr,
+        holoassist_dir=args.holoassist_dir,
+        video_name_arr=va_video_name_arr,
+        start_arr=va_start_arr,
+        end_arr=va_end_arr,
+        label_arr=va_label_arr,
         num_segments=args.num_segments,
         transform=va_transform,
-        mode="validation"
+        mode="validation",
     )
     va_dataloader = DataLoader(
         dataset=va_dataset, 
@@ -192,9 +195,24 @@ if __name__ == "__main__":
             tr_x = tr_batch[0].to(device) # video batch with image sequences [n, t_c, h, w]
             tr_y = tr_batch[1].to(device) # video batch labels [n]
 
+            # print("Device of tr_x:", tr_x.device)
+            # print("Shape of tr_x:", tr_x.shape)
+            # print("Data type of tr_x:", tr_x.dtype)
+
+            # print("Device of tr_y:", tr_y.device)
+            # print("Shape of tr_y:", tr_y.shape)
+            # print("Data type of tr_y:", tr_y.dtype)
+
             # Perform forward pass
             tr_preds = model(tr_x)
+
+            # print("Device of tr_preds:", tr_preds.device)
+            # print("Shape of tr_preds:", tr_preds.shape)
+            # print("Data type of tr_preds:", tr_preds.dtype)
+            
             tr_loss = criterion(tr_preds, tr_y)
+
+            # print(tr_loss)
 
             # Set the gradients to None after calling backward(), rather than set to zero. 
             # This can save memory, especially when dealing with large models or long sequences, 
@@ -226,7 +244,7 @@ if __name__ == "__main__":
             tr_epoch_acc1.update(value=tr_acc1, n=tr_x.size(0))
             tr_epoch_acc5.update(value=tr_acc5, n=tr_x.size(0))
 
-            if tr_batch_id % 100 == 0:
+            if tr_batch_id % 20 == 0:
 
                 print(f"tr_batch_id={tr_batch_id:04d}/{len(tr_dataloader):04d}",
                       f"|",

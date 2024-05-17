@@ -37,7 +37,7 @@ def reduce_list(
     Some video names in the list are actially not present as video files, 
     therefore, we will skip them.
     """
-    # Check available RGB video names
+    # Collect all downloaded videos.
     available_video_names = set()
     path = f"{holoassist_dir}/video_pitch_shifted/"
     for item in os.listdir(path):
@@ -45,18 +45,19 @@ def reduce_list(
         if os.path.isdir(item_path):
             available_video_names.add(item)
 
+    # Check how many names from the split list file
+    # are actually stored on the disk.
     # Dont use set to preserve order for reproducibility.
     intersection = []
     for item in video_name_list:
         if item in available_video_names:
             intersection.append(item)
 
-    # Count the number of videos that present in the list but are missing as videos
+    # Count the number of videos that present in the split list 
+    # but are missing as videos.
     not_present_count = len(video_name_list) - len(intersection)
-    print(
-        f"There are {len(video_name_list)} videos in the list",
-        f"There are {len(available_video_names)} videos as video files",
-        f"There are {not_present_count} videos that present in the list but are missing as videos."
-    )
+    print(f"\nThere are {len(video_name_list)} videos in the split list file.",
+          f"\nThere are {len(available_video_names)} videos downloaded and stored on the disk",
+          f"\nThere are {not_present_count} videos that present in the list but are missing on the disk.")
 
     return intersection

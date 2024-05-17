@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--holoassist_dir", type=str, default="/Users/artemmerinov/data/holoassist", help="Path to dataset directory.")
 parser.add_argument("--raw_annotation_file", type=str, default="/Users/artemmerinov/data/holoassist/data-annotation-trainval-v1_1.json", help="Path to raw annotation file.")
 parser.add_argument("--split_dir", type=str, default="/Users/artemmerinov/data/holoassist/data-splits-v1", help="Path to split directory.")
-parser.add_argument("--fine_grained_actions_map_file", type=str, default="/Users/artemmerinov/data/holoassist/fine_grained_actions_map.txt", help="Path fine-grained actions map file.")
+parser.add_argument("--fga_map_file", type=str, default="/Users/artemmerinov/data/holoassist/fine_grained_actions_map.txt", help="Path to fine-grained action map file.")
 
 # ========================= Model ==========================
 parser.add_argument("--base_model", type=str, default="InceptionV3", choices=["ResNet50", "ResNet101", "InceptionV3", "TimeSformer", "HORST"])

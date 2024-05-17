@@ -6,95 +6,85 @@ from torch.utils.data import Dataset
 from PIL import Image
 from typing import Dict, Tuple, Any, List, Union, Iterable, Callable, Literal
 
-from .prepare_annotation import prepare_annotation
+from .prepare_annotation import prepare_annotation_action, prepare_annotation_mistake
 from .prepare_split_list import get_video_name_list
-from .video_record import ClipRecord
 from .frame_loader import load_av_frames_from_video, transform_av_frames_to_PIL
 from .temporal_sampling import temporal_sampling
+from .utils import fganame_to_fgaid
+from .utils import make_video_path
 
 
 def prepare_clips_data(
         raw_annotation_file: str,
         holoassist_dir: str,
         split_dir: str,
-        fine_grained_actions_map_file: str,
+        fga_map_file: str,
         mode: Literal["train", "validation", "test"] = "train",
+        task: Literal["action", "mistake"] = "action",
         debug: bool = False,
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, ...]:
 
-    annotation = prepare_annotation(
-        raw_annotation_file=raw_annotation_file
-    )
-    video_name_list = get_video_name_list(
+    all_video_names = get_video_name_list(
         split_dir=split_dir, 
         holoassist_dir=holoassist_dir, 
         mode=mode
     )
-    
     if debug == True:
-        video_name_list = video_name_list[::10]
+        all_video_names = all_video_names[::10]
+
+    if task == "mistake":
+        annotation = prepare_annotation_mistake(raw_annotation_file=raw_annotation_file)
+
+        video_name_list, start_list, end_list, label_list = [], [], [], []
+        for video_name in all_video_names:
+            clips = annotation[video_name]
+            for clip in clips:
+                video_name_list.append(video_name)
+                start_list.append(clip["start"])
+                end_list.append(clip["end"])
+                label_list.append(clip["label"])
+
+    if task == "action":
+        annotation = prepare_annotation_action(raw_annotation_file=raw_annotation_file)
+        fganame_to_fgaid_dict = fganame_to_fgaid(fga_map_file=fga_map_file)
+
+        video_name_list, start_list, end_list, label_list = [], [], [], []
+        for video_name in all_video_names:
+            clips = annotation[video_name]
+            for clip in clips:
+                video_name_list.append(video_name)
+                start_list.append(clip["start"])
+                end_list.append(clip["end"])
+                label_list.append(fganame_to_fgaid_dict[clip["label"]])
+
+    video_name_arr = np.array(video_name_list, dtype=np.string_)
+    start_arr = np.array(start_list, dtype=np.float32)
+    end_arr = np.array(end_list, dtype=np.float32)
+    label_arr = np.array(label_list, dtype=np.int64)
     
-    # Find total number of clips in videos
-    # considering given mode (train/validation/test)
-
-    clips_num = 0
-    for video_name in video_name_list:
-        clips = annotation[video_name]
-        for clip in clips:
-            clips_num += 1
-    print(f"Number of clips: {clips_num} for mode {mode}")
-    
-    # Create data structure for each clip
-    # https://github.com/pytorch/pytorch/issues/13246
-
-    clip_path_to_video_arr = []
-    clip_start_arr = np.empty(clips_num, dtype=np.float32)
-    clip_end_arr = np.empty(clips_num, dtype=np.float32)
-    clip_action_id_arr = np.empty(clips_num, dtype=np.int64)
-    clip_mistake_arr = np.empty(clips_num, dtype=np.int64)
-
-    index = 0
-    for video_name in video_name_list:
-        clips = annotation[video_name]
-        for clip in clips:
-            clip_record = ClipRecord(
-                holoassist_dir=holoassist_dir,
-                video_name=video_name,
-                fine_grained_actions_map_file=fine_grained_actions_map_file,
-                clip=clip,
-            )
-            clip_path_to_video_arr.append(clip_record.path_to_video)
-            clip_start_arr[index] = clip_record.start
-            clip_end_arr[index] = clip_record.end
-            clip_action_id_arr[index] = clip_record.action_id
-            clip_mistake_arr[index] = clip_record.mistake
-
-            index += 1
-
-    clip_path_to_video_arr = np.array(clip_path_to_video_arr, dtype=np.string_)
-
-    return clip_path_to_video_arr, clip_start_arr, clip_end_arr, clip_action_id_arr, clip_mistake_arr
+    return video_name_arr, start_arr, end_arr, label_arr
 
 
 class VideoDataset(Dataset):
 
     def __init__(
-            self,  
-            clip_path_to_video_arr: np.ndarray,
-            clip_start_arr: np.ndarray,
-            clip_end_arr: np.ndarray,
-            clip_label_arr: np.ndarray,
+            self,
+            holoassist_dir: str,
+            video_name_arr: np.ndarray,
+            start_arr: np.ndarray,
+            end_arr: np.ndarray,
+            label_arr: np.ndarray,
             num_segments: int = 8,
             transform: Callable = None,
             mode: Literal["train", "validation", "test"] = "train",
             use_hands: bool = False,
         ) -> None:
 
-        self.clip_path_to_video_arr = clip_path_to_video_arr
-        self.clip_start_arr = clip_start_arr
-        self.clip_end_arr = clip_end_arr
-        self.clip_label_arr = clip_label_arr
-        
+        self.holoassist_dir = holoassist_dir
+        self.video_name_arr = video_name_arr
+        self.start_arr = start_arr
+        self.end_arr = end_arr
+        self.label_arr = label_arr
         self.num_segments = num_segments
         self.transform = transform
         self.mode = mode
@@ -102,19 +92,22 @@ class VideoDataset(Dataset):
 
     def __getitem__(self, index):
 
-        clip_path_to_video = self.clip_path_to_video_arr[index].decode()
-        clip_start = self.clip_start_arr[index]
-        clip_end = self.clip_end_arr[index]
-        clip_label = self.clip_label_arr[index]
+        path_to_video = make_video_path(
+            holoassist_dir=self.holoassist_dir, 
+            video_name=self.video_name_arr[index].decode()
+        )
+        start = self.start_arr[index]
+        end = self.end_arr[index]
+        label = self.label_arr[index]
 
         # ------------------- RGB -------------------
         # 
 
         # Extract frames from video using start and end time. 
         frames = load_av_frames_from_video(
-            path_to_video=clip_path_to_video, 
-            start_secs=clip_start, 
-            end_secs=clip_end
+            path_to_video=path_to_video, 
+            start_secs=start, 
+            end_secs=end
         )
 
         # Perform temporal sampling
@@ -138,7 +131,7 @@ class VideoDataset(Dataset):
             # TODO: normalise
             raise NotImplementedError()
         
-        return frames, clip_label
+        return frames, label
 
     def __len__(self):
-        return len(self.clip_path_to_video_arr)
+        return len(self.video_name_arr)

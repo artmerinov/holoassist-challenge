@@ -1,6 +1,6 @@
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-
+import os
 import math
+from typing import Dict
 
 
 def secs_to_pts(
@@ -42,3 +42,39 @@ def pts_to_secs(
         return math.inf
 
     return int(pts - start_pts) * time_base
+
+
+def make_video_path(
+        holoassist_dir: str,
+        video_name: str
+):
+    path = f"{holoassist_dir}/video_pitch_shifted/{video_name}/Export_py/Video_pitchshift.mp4"
+    return path
+
+
+def fganame_to_fgaid(fga_map_file: str) -> Dict[str, int]:
+    """
+    Args:
+        fga_map_file: path to the fine grained action annotation file.
+    """
+    action_name_to_id_dict = {}
+
+    with open(fga_map_file) as f:
+        for line in f.readlines():
+            label_id, label_name = line.strip().split(" ")
+            action_name_to_id_dict[label_name] = int(label_id)
+
+    return action_name_to_id_dict
+
+
+def fgaid_to_fganame(fga_map_file: str) -> Dict[str, int]:
+    """
+    Args:
+        fga_map_file: path to the fine grained action annotation file.
+    """
+    action_name_to_id_dict = fganame_to_fgaid(fga_map_file=fga_map_file)
+    id_to_action_name_dict = {}
+    for label_name, label_id in action_name_to_id_dict.items():
+        id_to_action_name_dict[label_id] = label_name
+        
+    return id_to_action_name_dict

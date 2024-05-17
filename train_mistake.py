@@ -63,12 +63,14 @@ if __name__ == "__main__":
 
     print("tr_dataset", flush=True)
 
-    tr_clip_path_to_video_arr, tr_clip_start_arr, tr_clip_end_arr, _, tr_clip_mistake_arr = prepare_clips_data(
+    tr_video_name_arr, tr_start_arr, tr_end_arr, tr_label_arr = prepare_clips_data(
         raw_annotation_file=args.raw_annotation_file,
-        holoassist_dir=args.holoassist_dir,
+        holoassist_dir=args.holoassist_dir, 
         split_dir=args.split_dir,
-        fine_grained_actions_map_file=args.fine_grained_actions_map_file,
+        fga_map_file=args.fga_map_file,
         mode="train",
+        task="mistake",
+        debug=args.debug,
     )
     tr_transform = Compose([
         GroupMultiScaleCrop(input_size=crop_size, scales=[1, .875]),
@@ -76,15 +78,15 @@ if __name__ == "__main__":
         ToTorchFormatTensor(div=div),
         GroupNormalize(mean=input_mean, std=input_std),
     ])
-
     tr_dataset = VideoDataset(
-        clip_path_to_video_arr=tr_clip_path_to_video_arr,
-        clip_start_arr=tr_clip_start_arr,
-        clip_end_arr=tr_clip_end_arr,
-        clip_label_arr=tr_clip_mistake_arr,
+        holoassist_dir=args.holoassist_dir,
+        video_name_arr=tr_video_name_arr,
+        start_arr=tr_start_arr,
+        end_arr=tr_end_arr,
+        label_arr=tr_label_arr,
         num_segments=args.num_segments,
         transform=tr_transform,
-        mode="train"
+        mode="train",
     )
     tr_dataloader = DataLoader(
         dataset=tr_dataset, 
@@ -100,12 +102,14 @@ if __name__ == "__main__":
 
     print("va_dataset", flush=True)
 
-    va_clip_path_to_video_arr, va_clip_start_arr, va_clip_end_arr, _, va_clip_mistake_arr = prepare_clips_data(
+    va_video_name_arr, va_start_arr, va_end_arr, va_label_arr = prepare_clips_data(
         raw_annotation_file=args.raw_annotation_file,
         holoassist_dir=args.holoassist_dir, 
         split_dir=args.split_dir,
-        fine_grained_actions_map_file=args.fine_grained_actions_map_file,
+        fga_map_file=args.fga_map_file,
         mode="validation",
+        task="mistake",
+        debug=args.debug,
     )
     va_transform = Compose([
         GroupMultiScaleCrop(input_size=crop_size, scales=[1, .875]),
@@ -114,13 +118,14 @@ if __name__ == "__main__":
         GroupNormalize(mean=input_mean, std=input_std),
     ])
     va_dataset = VideoDataset(
-        clip_path_to_video_arr=va_clip_path_to_video_arr,
-        clip_start_arr=va_clip_start_arr,
-        clip_end_arr=va_clip_end_arr,
-        clip_label_arr=va_clip_mistake_arr,
+        holoassist_dir=args.holoassist_dir,
+        video_name_arr=va_video_name_arr,
+        start_arr=va_start_arr,
+        end_arr=va_end_arr,
+        label_arr=va_label_arr,
         num_segments=args.num_segments,
         transform=va_transform,
-        mode="validation"
+        mode="validation",
     )
     va_dataloader = DataLoader(
         dataset=va_dataset, 
