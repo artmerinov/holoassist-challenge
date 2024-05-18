@@ -4,7 +4,7 @@ import argparse
 parser = argparse.ArgumentParser()
 
 # ========================= Paths ==========================
-parser.add_argument("--holoassist_dir", type=str, default="/Users/artemmerinov/data/holoassist", help="Path to dataset directory.")
+parser.add_argument("--holoassist_dir", type=str, default="/Users/artemmerinov/data/holoassist/HoloAssist", help="Path to dataset directory.")
 parser.add_argument("--raw_annotation_file", type=str, default="/Users/artemmerinov/data/holoassist/data-annotation-trainval-v1_1.json", help="Path to raw annotation file.")
 parser.add_argument("--split_dir", type=str, default="/Users/artemmerinov/data/holoassist/data-splits-v1", help="Path to split directory.")
 parser.add_argument("--fga_map_file", type=str, default="/Users/artemmerinov/data/holoassist/fine_grained_actions_map.txt", help="Path to fine-grained action map file.")
@@ -31,3 +31,4 @@ parser.add_argument("--batch_size", type=int, default=16)
 parser.add_argument("--num_workers", type=int, default=4, help="Number of workers in dataloader.")
 parser.add_argument("--prefetch_factor", type=int, default=2, help="Number of batches loaded in advance by each worker.")
 parser.add_argument("--debug", type=bool, default=False, help="Dubug mode, where only small portion of data is used.")
+parser.add_argument("--fps", type=int, default=10, help="Fps of extracted images.")

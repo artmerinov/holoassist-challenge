@@ -14,3 +14,7 @@ rsync -av \
 # copy scr/ folder
 rsync -av --exclude '__pycache__' src/ \
     amerinov@sdcslm01:/data/users/amerinov/projects/holoassist/src
+
+# copy process_data/ folder
+rsync -av --exclude '__pycache__' process_data/ \
+    amerinov@sdcslm01:/data/users/amerinov/projects/holoassist/process_data

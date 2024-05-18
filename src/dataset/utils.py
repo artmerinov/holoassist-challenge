@@ -48,7 +48,7 @@ def make_video_path(
         holoassist_dir: str,
         video_name: str
 ):
-    path = f"{holoassist_dir}/video_pitch_shifted/{video_name}/Export_py/Video_pitchshift.mp4"
+    path = f"{holoassist_dir}/{video_name}/Export_py/Video_pitchshift.mp4"
     return path
 
 

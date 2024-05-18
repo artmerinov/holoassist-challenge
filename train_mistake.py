@@ -24,6 +24,7 @@ if __name__ == "__main__":
 
     # Check folders
     os.makedirs("pics", exist_ok=True)
+    os.makedirs("logs", exist_ok=True)
     os.makedirs("checkpoints", exist_ok=True)
 
     # Reproducibility.

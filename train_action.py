@@ -22,6 +22,7 @@ from src.utils.metrics import calc_accuracy
 if __name__ == "__main__":
 
     # Check folders.
+    os.makedirs("logs", exist_ok=True)
     os.makedirs("checkpoints", exist_ok=True)
 
     # Reproducibility.

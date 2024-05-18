@@ -39,9 +39,8 @@ def reduce_list(
     """
     # Collect all downloaded videos.
     available_video_names = set()
-    path = f"{holoassist_dir}/video_pitch_shifted/"
-    for item in os.listdir(path):
-        item_path = os.path.join(path, item)
+    for item in os.listdir(holoassist_dir):
+        item_path = os.path.join(holoassist_dir, item)
         if os.path.isdir(item_path):
             available_video_names.add(item)
 
