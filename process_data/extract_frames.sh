@@ -6,3 +6,4 @@ python3 -B extract_frames.py \
     --width 640 \
     --height 350 \
     --threads 16 \
+    | tee -a /data/users/amerinov/projects/holoassist/logs/extract_frames.log

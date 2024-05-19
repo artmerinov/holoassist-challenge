@@ -45,6 +45,7 @@ def extract_frames_all(
 
     # Filter out items that are not directories
     video_names = [item for item in items if os.path.isdir(os.path.join(holoassist_dir, item))]
+    video_names = sorted(video_names)
 
     total_images_memory = 0
 
