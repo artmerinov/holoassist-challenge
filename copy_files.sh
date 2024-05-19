@@ -2,10 +2,12 @@
 
 # copy files
 rsync -av \
-    run.batch \
     train_action.py \
     train_action.sh \
+    train_action.batch \
     eval_action.py \
+    eval_action.sh \
+    eval_action.batch \
     train_mistake.py \
     train_mistake.sh \
     eval_mistake.py \

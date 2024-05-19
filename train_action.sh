@@ -12,11 +12,11 @@ python3 -B /data/users/amerinov/projects/holoassist/train_action.py \
     --num_classes 1887 \
     --base_model InceptionV3 \
     --fusion_mode GSF \
-    --resume /data/users/amerinov/projects/holoassist/checkpoints/holoassist_InceptionV3_GSF_action_00.pth \
-    --num_epochs 3 \
+    --resume /data/users/amerinov/projects/holoassist/checkpoints/holoassist_InceptionV3_GSF_action_11.pth \
+    --num_epochs 13 \
     --batch_size 32 \
-    --num_workers 8 \
-    --prefetch_factor 8 \
+    --num_workers 12 \
+    --prefetch_factor 4 \
     --num_segments 8 \
     --lr 0.01 \
     --clip_gradient 20 \

@@ -1,7 +1,7 @@
 import os
 import argparse
-import av
-from PIL import Image
+import time
+from datetime import datetime
 
 
 def extract_frames(
@@ -10,50 +10,24 @@ def extract_frames(
         fps: int,
         width: int,
         height: int,
+        threads: int,
     ) -> None:
     """
     Extract frames from single video.
     """
-    base_path = os.path.join(holoassist_dir, video_name, "Export_py")
-    video_path = os.path.join(base_path, "Video_pitchshift.mp4")
-    mpeg_img_path = os.path.join(base_path, "Video", "images")
+    image_output_dir = os.path.join(holoassist_dir, video_name, "Export_py", "Video", "images")
+    video_path = os.path.join(holoassist_dir, video_name, "Export_py", "Video_pitchshift.mp4")
 
-    os.chdir(os.path.join(base_path, "Video"))
-    if not os.path.exists(mpeg_img_path):
-        # Export images if the path does not exist.
-        os.mkdir(mpeg_img_path)
-
-        command = (
-            f"ffmpeg -i ../Video_pitchshift.mp4 "
-            f"-vf 'fps={fps},scale={width}:{height}' "
-            "-start_number 0 "
-            "images/%06d.png"
-            " > /dev/null 2>&1"
-        )
-        os.system(command)
-
-        # # Open the video file
-        # video = av.open(video_path)
-        
-        # # Get the video stream
-        # video_stream = video.streams.video[0]
-        # print(video_stream.average_rate)
-
-        # # Calculate the interval for frame extraction
-        # target_interval = int(video_stream.average_rate / fps)
-        # print(target_interval)
-        
-        # img_num = 0
-        # for frame_id, frame in enumerate(video.decode(video=0)):
-        #     if frame_id % target_interval == 0:
-        #         # Rescale the frame
-        #         # frame = frame.reformat(width=width, height=height)
-        #         # Convert the frame to an image
-        #         # img = frame.to_image()
-        #         img = frame.to_image().resize((width, height), Image.BILINEAR)
-        #         # Save the image
-        #         img.save(os.path.join(mpeg_img_path, f"{img_num:06d}.png"))
-        #         img_num += 1
+    os.makedirs(image_output_dir, exist_ok=True)
+    command = (
+        f"ffmpeg -i {video_path} "
+        f"-threads {threads} "
+        f"-vf 'fps={fps},scale={width}:{height}' "
+        f"-start_number 0 "
+        f"{image_output_dir}/%06d.png "
+        f"> /dev/null 2>&1"
+    )
+    os.system(command)
 
 
 def extract_frames_all(
@@ -61,6 +35,7 @@ def extract_frames_all(
         fps: int,
         width: int,
         height: int,
+        threads: int,
     ) -> None:
     """
     Extract frames from all videos.
@@ -71,6 +46,8 @@ def extract_frames_all(
     # Filter out items that are not directories
     video_names = [item for item in items if os.path.isdir(os.path.join(holoassist_dir, item))]
 
+    total_images_memory = 0
+
     for i, video_name in enumerate(video_names):
         extract_frames(
             holoassist_dir=holoassist_dir, 
@@ -78,10 +55,26 @@ def extract_frames_all(
             fps=fps, 
             width=width, 
             height=height,
+            threads=threads,
         )
-        print(f"{i:04d}/{len(video_names):04d} {video_name}")
+        
+        # Print memory occupied by extracted images from a video
+        image_output_dir = os.path.join(holoassist_dir, video_name, "Export_py", "Video", "images")
+        
+        images_memory = 0
+        for image_file in os.listdir(image_output_dir):
+            path_to_img = os.path.join(image_output_dir, image_file)
+            images_memory += os.path.getsize(path_to_img)
+        total_images_memory += images_memory
 
-    print("Done.")
+        print(f"progress={i:04d}/{len(video_names):04d}", 
+              f"video_name={video_name}", 
+              f"images_memory={images_memory / (1024 * 1024 * 1024):.2f} GB",
+              f"total_images_memory={total_images_memory / (1024 * 1024 * 1024):.2f} GB",
+              f"time={datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}",
+              flush=True)
+        
+    print("Done.", flush=True)
 
 
 if __name__ == "__main__":
@@ -91,6 +84,7 @@ if __name__ == "__main__":
     parser.add_argument('--fps', type=int, default=10)
     parser.add_argument('--width', type=int, default=640)
     parser.add_argument('--height', type=int, default=350)
+    parser.add_argument('--threads', type=int, default=4)
     args = parser.parse_args()
 
     extract_frames_all(
@@ -98,4 +92,5 @@ if __name__ == "__main__":
         fps=args.fps, 
         width=args.width, 
         height=args.height,
+        threads=args.threads,
     )

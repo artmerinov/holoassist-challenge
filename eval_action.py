@@ -17,27 +17,19 @@ from src.utils.metrics import calc_accuracy
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-
-    # local run
-    # parser.add_argument("--holoassist_dir", type=str, default="/Users/artemmerinov/data/holoassist")
-    # parser.add_argument("--raw_annotation_file", type=str, default="/Users/artemmerinov/data/holoassist/data-annotation-trainval-v1_1.json")
-    # parser.add_argument("--split_dir", type=str, default="/Users/artemmerinov/data/holoassist/data-splits-v1")
-    # parser.add_argument("--fine_grained_actions_map_file", type=str, default="/Users/artemmerinov/data/holoassist/fine_grained_actions_map.txt")
-
-    # server run
-    parser.add_argument("--holoassist_dir", type=str, default="/data/amerinov/data/holoassist")
-    parser.add_argument("--raw_annotation_file", type=str, default="/data/amerinov/data/holoassist/data-annotation-trainval-v1_1.json")
-    parser.add_argument("--split_dir", type=str, default="/data/amerinov/data/holoassist/data-splits-v1")
-    parser.add_argument("--fine_grained_actions_map_file", type=str, default="/data/amerinov/data/holoassist/fine_grained_actions_map.txt")
+    parser.add_argument("--holoassist_dir", type=str, default="/data/users/amerinov/data/holoassist/HoloAssist")
+    parser.add_argument("--raw_annotation_file", type=str, default="/data/users/amerinov/data/holoassist/data-annotation-trainval-v1_1.json")
+    parser.add_argument("--split_dir", type=str, default="/data/users/amerinov/data/holoassist/data-splits-v1")
+    parser.add_argument("--fga_map_file", type=str, default="/data/users/amerinov/data/holoassist/fine_grained_actions_map.txt")
     parser.add_argument("--base_model", type=str, default="InceptionV3")
     parser.add_argument("--fusion_mode", type=str, default="GSF")
     parser.add_argument("--num_segments", type=int, default=8)
-    parser.add_argument("--batch_size", type=int, default=16)
-    parser.add_argument("--num_workers", type=int, default=4)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--num_workers", type=int, default=12)
     parser.add_argument("--prefetch_factor", type=int, default=4)
     parser.add_argument("--repetitions", type=int, default=3, help="Number of spatial and temporal sampling to achieve better precision in evaluation.")
     parser.add_argument("--num_classes", type=int, default=1887)
-    parser.add_argument("--checkpoint", type=str, default="/data/amerinov/projects/holoassist/checkpoints/holoassist_InceptionV3_GSF_action_10.pth", help="Best model weigths.")
+    parser.add_argument("--checkpoint", type=str, default="/data/users/amerinov/projects/holoassist/checkpoints/holoassist_InceptionV3_GSF_action_11.pth", help="Best model weigths.")
     args = parser.parse_args()
     print(args)
 
@@ -65,7 +57,7 @@ if __name__ == "__main__":
     div = model.div
     
     # Parallel!
-    model = torch.nn.DataParallel(model).to(device)
+    # model = torch.nn.DataParallel(model).to(device)
 
     #  ========================= LOAD MODEL STATE =========================
     # 
@@ -76,12 +68,14 @@ if __name__ == "__main__":
     #  ========================= PREPARE CLIPS DATA =========================
     # 
 
-    va_clip_path_to_video_arr, va_clip_start_arr, va_clip_end_arr, va_clip_action_id_arr, _ = prepare_clips_data(
+    va_video_name_arr, va_start_arr, va_end_arr, va_label_arr = prepare_clips_data(
         raw_annotation_file=args.raw_annotation_file,
         holoassist_dir=args.holoassist_dir, 
         split_dir=args.split_dir,
-        fine_grained_actions_map_file=args.fine_grained_actions_map_file,
+        fga_map_file=args.fga_map_file,
         mode="validation",
+        task="action",
+        debug=False,
     )
 
     #  ========================= REPETITIONS =========================
@@ -114,13 +108,14 @@ if __name__ == "__main__":
             GroupNormalize(mean=input_mean, std=input_std),
         ])
         va_dataset = VideoDataset(
-            clip_path_to_video_arr=va_clip_path_to_video_arr,
-            clip_start_arr=va_clip_start_arr,
-            clip_end_arr=va_clip_end_arr,
-            clip_label_arr=va_clip_action_id_arr,
+            holoassist_dir=args.holoassist_dir,
+            video_name_arr=va_video_name_arr,
+            start_arr=va_start_arr,
+            end_arr=va_end_arr,
+            label_arr=va_label_arr,
             num_segments=args.num_segments,
             transform=va_transform,
-            mode="validation"
+            mode="validation",
         )
         va_dataloader = DataLoader(
             dataset=va_dataset, 
