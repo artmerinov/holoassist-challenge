@@ -7,7 +7,7 @@ from typing import Tuple, List, Any
 def temporal_sampling(
         frames: List[Any],
         num_segments: int,
-        mode: str = "train",
+        # mode: str = "train",
     ) -> Tuple[np.ndarray, List[Any]]:
     """
     Given the list of frames, sample `num_samples` frames.
@@ -15,18 +15,28 @@ def temporal_sampling(
     num_frames = len(frames)
     average_duration = num_frames // num_segments
 
-    if mode != "test":
-        if average_duration > 0:
-            segment_indices = (
-                np.multiply(list(range(num_segments)), average_duration) + 
-                randint(average_duration, size=num_segments)
-            )
-        elif num_frames > num_segments:
-            segment_indices = np.sort(randint(num_frames, size=num_segments))
-        else:
-            segment_indices = np.zeros((num_segments,), dtype="int64")
+    # if mode != "test":
+    #     if average_duration > 0:
+    #         segment_indices = (
+    #             np.multiply(list(range(num_segments)), average_duration) + 
+    #             randint(average_duration, size=num_segments)
+    #         )
+    #     elif num_frames > num_segments:
+    #         segment_indices = np.sort(randint(num_frames, size=num_segments))
+    #     else:
+    #         segment_indices = np.zeros((num_segments,), dtype="int64")
+    # else:
+    #     raise NotImplementedError()
+
+    if average_duration > 0:
+        segment_indices = (
+            np.multiply(list(range(num_segments)), average_duration) + 
+            randint(average_duration, size=num_segments)
+        )
+    elif num_frames > num_segments:
+        segment_indices = np.sort(randint(num_frames, size=num_segments))
     else:
-        raise NotImplementedError()
+        segment_indices = np.zeros((num_segments,), dtype="int64")
     
     frames =  [frames[i] for i in segment_indices]
 

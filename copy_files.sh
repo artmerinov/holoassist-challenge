@@ -5,6 +5,9 @@ rsync -av \
     train_action.py \
     train_action.sh \
     train_action.batch \
+    test_action.py \
+    test_action.sh \
+    test_action.batch \
     eval_action.py \
     eval_action.sh \
     eval_action.batch \
