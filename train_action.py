@@ -90,7 +90,7 @@ if __name__ == "__main__":
         shuffle=True,
         num_workers=args.num_workers, 
         drop_last=True,
-        pin_memory=False,
+        pin_memory=True,
         prefetch_factor=args.prefetch_factor,
     )
 
@@ -130,7 +130,7 @@ if __name__ == "__main__":
         shuffle=False,
         num_workers=args.num_workers, 
         drop_last=False, 
-        pin_memory=False,
+        pin_memory=True,
         prefetch_factor=args.prefetch_factor,
     )
 

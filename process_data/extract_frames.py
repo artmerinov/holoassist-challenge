@@ -13,19 +13,24 @@ def extract_frames(
         threads: int,
     ) -> None:
     """
-    Extract frames from single video.
+    Extract frames from a single video.
     """
     image_output_dir = os.path.join(holoassist_dir, video_name, "Export_py", "Video", "images")
     video_path = os.path.join(holoassist_dir, video_name, "Export_py", "Video_pitchshift.mp4")
 
     os.makedirs(image_output_dir, exist_ok=True)
+
+    # Some video names has spaces, 
+    # e.g. "R101- 2Aug-SmallPrinter", "R158-3Oct-RAM & Graphicscard",
+    # therefore, we need to make proper command with inner quotes.
+
     command = (
-        f"ffmpeg -i {video_path} "
-        f"-threads {threads} "
-        f"-vf 'fps={fps},scale={width}:{height}' "
-        f"-start_number 0 "
-        f"{image_output_dir}/%06d.png "
-        f"> /dev/null 2>&1"
+        f'ffmpeg -i "{video_path}" '
+        f'-threads {threads} '
+        f'-vf "fps={fps},scale={width}:{height}" '
+        f'-start_number 0 '
+        f'"{os.path.join(image_output_dir, "%06d.png")}" '
+        f'> /dev/null 2>&1'
     )
     os.system(command)
 

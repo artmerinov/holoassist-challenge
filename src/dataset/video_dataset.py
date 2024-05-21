@@ -8,7 +8,7 @@ from typing import Dict, Tuple, Any, List, Union, Iterable, Callable, Literal
 
 from .prepare_annotation import prepare_annotation_action, prepare_annotation_mistake
 from .prepare_split_list import get_video_name_list
-from .frame_loader import load_av_frames_from_video, transform_av_frames_to_PIL
+from .frame_loader import load_av_frames_from_video, transform_av_frames_to_PIL, load_frames_from_dir
 from .temporal_sampling import temporal_sampling
 from .utils import fganame_to_fgaid
 from .utils import make_video_path
@@ -66,7 +66,6 @@ def prepare_clips_data(
 
 
 class VideoDataset(Dataset):
-
     def __init__(
             self,
             holoassist_dir: str,
@@ -78,6 +77,7 @@ class VideoDataset(Dataset):
             transform: Callable = None,
             mode: Literal["train", "validation", "test"] = "train",
             use_hands: bool = False,
+            fps: int = 10,
         ) -> None:
 
         self.holoassist_dir = holoassist_dir
@@ -89,6 +89,7 @@ class VideoDataset(Dataset):
         self.transform = transform
         self.mode = mode
         self.use_hands = use_hands
+        self.fps = fps
 
     def __getitem__(self, index):
 
@@ -99,9 +100,6 @@ class VideoDataset(Dataset):
         start = self.start_arr[index]
         end = self.end_arr[index]
         label = self.label_arr[index]
-
-        # ------------------- RGB -------------------
-        # 
 
         # Extract frames from video using start and end time. 
         frames = load_av_frames_from_video(
@@ -124,14 +122,43 @@ class VideoDataset(Dataset):
         if self.transform:
             frames = self.transform(frames)
 
-        # ------------------- HANDS -------------------
-
-        # Extract hands skeleton data using start and end time.
-        if self.use_hands:
-            # TODO: normalise
-            raise NotImplementedError()
-        
         return frames, label
+
+    # def __getitem__(self, index):
+
+    #     video_name = self.video_name_arr[index].decode()
+    #     start = self.start_arr[index]
+    #     end = self.end_arr[index]
+    #     label = self.label_arr[index]
+
+    #     # Load frames from directory
+    #     frame_paths = load_frames_from_dir(
+    #         holoassist_dir=self.holoassist_dir,
+    #         video_name=video_name,
+    #         start_secs=start,
+    #         end_secs=end,
+    #         fps=self.fps,
+    #     )
+
+    #     # Perform temporal sampling
+    #     sampling_portions, frame_paths = temporal_sampling(
+    #         frames=frame_paths,
+    #         num_segments=self.num_segments,
+    #         mode=self.mode
+    #         )
+
+    #     # Create list of PIL images based on frame paths
+    #     frames = []
+    #     for path in frame_paths:
+    #         frame = Image.open(path)
+    #         frame = frame.convert('RGB')
+    #         frames.append(frame)
+        
+    #     # Perform spatial sampling and apply transformations
+    #     if self.transform:
+    #         frames = self.transform(frames)
+
+    #     return frames, label
 
     def __len__(self):
         return len(self.video_name_arr)

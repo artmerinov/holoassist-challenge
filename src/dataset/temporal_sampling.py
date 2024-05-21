@@ -1,14 +1,14 @@
 import numpy as np
 from numpy.random import randint
 import av
-from typing import Tuple, List
+from typing import Tuple, List, Any
 
 
 def temporal_sampling(
-        frames: List[av.video.frame.VideoFrame],
+        frames: List[Any],
         num_segments: int,
         mode: str = "train",
-    ) -> Tuple[np.ndarray, List[av.video.frame.VideoFrame]]:
+    ) -> Tuple[np.ndarray, List[Any]]:
     """
     Given the list of frames, sample `num_samples` frames.
     """
@@ -21,6 +21,8 @@ def temporal_sampling(
                 np.multiply(list(range(num_segments)), average_duration) + 
                 randint(average_duration, size=num_segments)
             )
+        elif num_frames > num_segments:
+            segment_indices = np.sort(randint(num_frames, size=num_segments))
         else:
             segment_indices = np.zeros((num_segments,), dtype="int64")
     else:

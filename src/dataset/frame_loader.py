@@ -61,3 +61,40 @@ def transform_av_frames_to_PIL(
     """
     pil_images = [frame.to_image() for frame in frames]
     return pil_images
+
+
+def load_frames_from_dir(
+        holoassist_dir: str,
+        video_name: str, 
+        start_secs: float,
+        end_secs: float,
+        fps: int
+    ):
+    """
+    Load images from directory and filter them 
+    based on the time interval.
+    """
+    path_to_frames = os.path.join(holoassist_dir, video_name, "Export_py", "Video", "images")
+    frames = sorted(os.listdir(path_to_frames))
+    
+    # Convert seconds to frames
+    start_frame_index = int(start_secs * fps)
+    end_frame_index = int(end_secs * fps)
+    if start_frame_index == end_frame_index and end_frame_index < len(frames) - 1:
+        end_frame_index += 1
+    elif start_frame_index == end_frame_index and end_frame_index == len(frames) - 1:
+        start_frame_index -= 1
+
+    # Load only images within the specified frame range
+    filt_frames = frames[start_frame_index:end_frame_index]
+    filt_paths = [f"{path_to_frames}/{f}" for f in filt_frames]
+
+    if len(filt_paths) == 0:
+        print(f"len(frames)={len(frames)}",
+            f"video_name={video_name}",
+            f"start_frame_index={start_frame_index}",
+            f"end_frame_index={end_frame_index}",
+            flush=True)
+        raise ValueError("HELLO")
+
+    return filt_paths
