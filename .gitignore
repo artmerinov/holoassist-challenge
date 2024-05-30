@@ -10,3 +10,7 @@ checkpoints/
 
 # OS generated files
 .DS_Store
+
+# Predictiions
+pred.json
+answer.zip

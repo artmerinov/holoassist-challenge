@@ -14,6 +14,6 @@ python3 -B /data/users/amerinov/projects/holoassist/test_action.py \
     --num_workers 28 \
     --prefetch_factor 8 \
     --num_segments 8 \
-    --repetitions 2 \
-    --test_action_clips_file /data/users/amerinov/data/holoassist/test_action_clips.txt \
+    --repetitions 3 \
+    --test_action_clips_file /data/users/amerinov/data/holoassist/test_action_clips-v1_2.txt \
     --checkpoint /data/users/amerinov/projects/holoassist/checkpoints/holoassist_InceptionV3_GSF_action_11.pth \

@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser()
 # ========================= Paths ==========================
 parser.add_argument("--holoassist_dir", type=str, default="/Users/artemmerinov/data/holoassist/HoloAssist", help="Path to dataset directory.")
 parser.add_argument("--raw_annotation_file", type=str, default="/Users/artemmerinov/data/holoassist/data-annotation-trainval-v1_1.json", help="Path to raw annotation file.")
-parser.add_argument("--split_dir", type=str, default="/Users/artemmerinov/data/holoassist/data-splits-v1", help="Path to split directory.")
+parser.add_argument("--split_dir", type=str, default="/Users/artemmerinov/data/holoassist/data-splits-v1_2", help="Path to split directory.")
 parser.add_argument("--fga_map_file", type=str, default="/Users/artemmerinov/data/holoassist/fine_grained_actions_map.txt", help="Path to fine-grained action map file.")
 
 # ========================= Model ==========================

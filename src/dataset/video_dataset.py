@@ -213,11 +213,13 @@ def prepare_clips_data_test(
     with open(test_action_clips_file, 'r') as f:
         for line in f:
 
-            key = line.strip()
-            record = key.split('_')
+            record = line.strip().split('_')
             video_name = "_".join(record[:-2])
-            start = float(record[-2])
-            end = float(record[-1])
+            start = record[-2]
+            end = record[-1]
+
+            # key = line.strip()
+            key = f"{video_name}_{float(start):.3f}_{float(end):.3f}"
 
             # Checck if the path to video exists:
             path_to_video = make_video_path(

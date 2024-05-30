@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--holoassist_dir", type=str, default="/data/users/amerinov/data/holoassist/HoloAssist")
-    parser.add_argument("--test_action_clips_file", type=str, default="/data/users/amerinov/data/holoassist/test_action_clips.txt")
+    parser.add_argument("--test_action_clips_file", type=str, default="/data/users/amerinov/data/holoassist/test_action_clips-v1_2.txt")
     parser.add_argument("--fga_map_file", type=str, default="/data/users/amerinov/data/holoassist/fine_grained_actions_map.txt")
     parser.add_argument("--base_model", type=str, default="InceptionV3")
     parser.add_argument("--fusion_mode", type=str, default="GSF")

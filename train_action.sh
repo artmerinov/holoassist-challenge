@@ -7,7 +7,7 @@
 python3 -B /data/users/amerinov/projects/holoassist/train_action.py \
     --holoassist_dir /data/users/amerinov/data/holoassist/HoloAssist \
     --raw_annotation_file /data/users/amerinov/data/holoassist/data-annotation-trainval-v1_1.json \
-    --split_dir /data/users/amerinov/data/holoassist/data-splits-v1 \
+    --split_dir /data/users/amerinov/data/holoassist/data-splits-v1_2 \
     --fga_map_file /data/users/amerinov/data/holoassist/fine_grained_actions_map.txt \
     --num_classes 1887 \
     --base_model InceptionV3 \
