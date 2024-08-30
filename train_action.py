@@ -149,14 +149,11 @@ if __name__ == "__main__":
         momentum=args.momentum,
         weight_decay=args.weight_decay
     )
-    if args.base_model in ["InceptionV3", "ResNet50"]:
-        lr_scheduler = MultiStepLR(
-            optimizer=optimizer,
-            milestones=[5, 10, 13, 15],
-            gamma=0.5
-        )
-    else:
-        raise ValueError()
+    lr_scheduler = MultiStepLR(
+        optimizer=optimizer,
+        milestones=[5, 10, 13, 15],
+        gamma=0.5
+    )
 
     if args.resume:
         if os.path.isfile(args.resume):

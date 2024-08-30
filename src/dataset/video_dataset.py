@@ -58,7 +58,7 @@ def prepare_clips_data(
                 end_list.append(clip["end"])
                 label_list.append(fganame_to_fgaid_dict[clip["label"]])
 
-    video_name_arr = np.array(video_name_list, dtype=np.string_)
+    video_name_arr = np.array(video_name_list, dtype=np.bytes_)
     start_arr = np.array(start_list, dtype=np.float32)
     end_arr = np.array(end_list, dtype=np.float32)
     label_arr = np.array(label_list, dtype=np.int64)
@@ -187,8 +187,8 @@ class VideoDataset(Dataset):
 #             start_list.append(start)
 #             end_list.append(end)
 
-#     key_arr = np.array(key_list, dtype=np.string_)
-#     video_name_arr = np.array(video_name_list, dtype=np.string_)
+#     key_arr = np.array(key_list, dtype=np.bytes_)
+#     video_name_arr = np.array(video_name_list, dtype=np.bytes_)
 #     start_arr = np.array(start_list, dtype=np.float32)
 #     end_arr = np.array(end_list, dtype=np.float32)
 
@@ -247,9 +247,9 @@ def prepare_clips_data_test(
           f"\nFailed video names are: {failed_video_names}", 
           flush=True)
 
-    video_name_arr = np.array(video_name_list, dtype=np.string_)
-    start_arr = np.array(start_list, dtype=np.string_)
-    end_arr = np.array(end_list, dtype=np.string_)
+    video_name_arr = np.array(video_name_list, dtype=np.bytes_)
+    start_arr = np.array(start_list, dtype=np.bytes_)
+    end_arr = np.array(end_list, dtype=np.bytes_)
 
     return key_list, video_name_arr, start_arr, end_arr
 

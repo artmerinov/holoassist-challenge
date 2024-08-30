@@ -56,7 +56,7 @@ class VideoModel(nn.Module):
     def _prepare_timesformer224(self):
         
         import os
-        os.environ['HF_HOME'] = "/data/amerinov/data/backbones/huggingface"
+        os.environ['HF_HOME'] = "/data/users/amerinov/data/backbones/huggingface"
 
         import timm
         from timesformer.models.vit import TimeSformer 
@@ -181,8 +181,8 @@ class VideoModel(nn.Module):
 
         if self.mode == "train":
 
-            # chk = torch.load('/data/users/amerinov/data/backbones/something-v1_inceptionv3_16frames.pth.tar')
-            chk = torch.load("/Users/artemmerinov/PycharmProjects/holoassist-challenge/checkpoints/something-v1_inceptionv3_16frames.pth.tar", map_location=torch.device('cpu'))
+            chk = torch.load('/data/users/amerinov/data/backbones/something-v1_inceptionv3_16frames.pth.tar')
+            # chk = torch.load("/Users/artemmerinov/PycharmProjects/holoassist-challenge/checkpoints/something-v1_inceptionv3_16frames.pth.tar", map_location=torch.device('cpu'))
             chk_model_state_dict = chk["model_state_dict"]
 
             # Create a new state dictionary with modified keys
