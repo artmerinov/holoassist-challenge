@@ -9,6 +9,7 @@ logs/
 checkpoints/
 runs/
 tsne_artefacts/
+pics/
 
 # OS generated files
 .DS_Store
