@@ -46,6 +46,7 @@ layers:
 - attrs: {kernel_size: 3, mode: max, pad: 0, stride: 2}
   expr: pool_1<=Pooling<=conv_4
   id: pool_1
+
 - attrs: {kernel_h: 1, kernel_w: 1, num_output: 64, pad_h: 0, pad_w: 0, stride_h: 1,
     stride_w: 1}
   expr: mixed_conv_Conv2D<=Convolution<=pool_1
@@ -110,6 +111,7 @@ layers:
 - {expr: mixed_tower_2_conv<=ReLU<=mixed_tower_2_conv, id: mixed_tower_2_conv}
 - {expr: 'mixed_join<=Concat<=mixed_conv,mixed_tower_conv_1,mixed_tower_1_conv_2,mixed_tower_2_conv',
   id: mixed_join}
+
 - attrs: {kernel_h: 1, kernel_w: 1, num_output: 64, pad_h: 0, pad_w: 0, stride_h: 1,
     stride_w: 1}
   expr: mixed_1_conv_Conv2D<=Convolution<=mixed_join
@@ -174,6 +176,7 @@ layers:
 - {expr: mixed_1_tower_2_conv<=ReLU<=mixed_1_tower_2_conv, id: mixed_1_tower_2_conv}
 - {expr: 'mixed_1_join<=Concat<=mixed_1_conv,mixed_1_tower_conv_1,mixed_1_tower_1_conv_2,mixed_1_tower_2_conv',
   id: mixed_1_join}
+
 - attrs: {kernel_h: 1, kernel_w: 1, num_output: 64, pad_h: 0, pad_w: 0, stride_h: 1,
     stride_w: 1}
   expr: mixed_2_conv_Conv2D<=Convolution<=mixed_1_join
@@ -238,23 +241,24 @@ layers:
 - {expr: mixed_2_tower_2_conv<=ReLU<=mixed_2_tower_2_conv, id: mixed_2_tower_2_conv}
 - {expr: 'mixed_2_join<=Concat<=mixed_2_conv,mixed_2_tower_conv_1,mixed_2_tower_1_conv_2,mixed_2_tower_2_conv',
   id: mixed_2_join}
+
 - attrs: {kernel_h: 3, kernel_w: 3, num_output: 384, pad_h: 0, pad_w: 0, stride_h: 2,
     stride_w: 2}
   expr: mixed_3_conv_Conv2D<=Convolution<=mixed_2_join
   id: mixed_3_conv_Conv2D
+- attrs: {fPlane: 384}
+  expr: gsm_mixed_3_conv_Conv2D<=gsm<=mixed_3_conv_Conv2D
+  id: gsm_mixed_3_conv_Conv2D
 - attrs: {}
-  expr: mixed_3_conv<=BN<=mixed_3_conv_Conv2D
+  expr: mixed_3_conv<=BN<=gsm_mixed_3_conv_Conv2D
   id: mixed_3_conv_batchnorm
 - {expr: mixed_3_conv<=ReLU<=mixed_3_conv, id: mixed_3_conv}
 - attrs: {kernel_h: 1, kernel_w: 1, num_output: 64, pad_h: 0, pad_w: 0, stride_h: 1,
     stride_w: 1}
   expr: mixed_3_tower_conv_Conv2D<=Convolution<=mixed_2_join
   id: mixed_3_tower_conv_Conv2D
-- attrs: {fPlane: 64}
-  expr: gsm_mixed_3_tower_conv_Conv2D<=gsm<=mixed_3_tower_conv_Conv2D
-  id: gsm_mixed_3_tower_conv_Conv2D
 - attrs: {}
-  expr: mixed_3_tower_conv<=BN<=gsm_mixed_3_tower_conv_Conv2D
+  expr: mixed_3_tower_conv<=BN<=mixed_3_tower_conv_Conv2D
   id: mixed_3_tower_conv_batchnorm
 - {expr: mixed_3_tower_conv<=ReLU<=mixed_3_tower_conv, id: mixed_3_tower_conv}
 - attrs: {kernel_h: 3, kernel_w: 3, num_output: 96, pad_h: 1, pad_w: 1, stride_h: 1,
@@ -277,6 +281,7 @@ layers:
   expr: mixed_3_pool<=Pooling<=mixed_2_join
   id: mixed_3_pool
 - {expr: 'mixed_3_join<=Concat<=mixed_3_conv,mixed_3_tower_conv_2,mixed_3_pool', id: mixed_3_join}
+
 - attrs: {kernel_h: 1, kernel_w: 1, num_output: 192, pad_h: 0, pad_w: 0, stride_h: 1,
     stride_w: 1}
   expr: mixed_4_conv_Conv2D<=Convolution<=mixed_3_join
@@ -365,6 +370,7 @@ layers:
 - {expr: mixed_4_tower_2_conv<=ReLU<=mixed_4_tower_2_conv, id: mixed_4_tower_2_conv}
 - {expr: 'mixed_4_join<=Concat<=mixed_4_conv,mixed_4_tower_conv_2,mixed_4_tower_1_conv_4,mixed_4_tower_2_conv',
   id: mixed_4_join}
+
 - attrs: {kernel_h: 1, kernel_w: 1, num_output: 192, pad_h: 0, pad_w: 0, stride_h: 1,
     stride_w: 1}
   expr: mixed_5_conv_Conv2D<=Convolution<=mixed_4_join
@@ -453,12 +459,16 @@ layers:
 - {expr: mixed_5_tower_2_conv<=ReLU<=mixed_5_tower_2_conv, id: mixed_5_tower_2_conv}
 - {expr: 'mixed_5_join<=Concat<=mixed_5_conv,mixed_5_tower_conv_2,mixed_5_tower_1_conv_4,mixed_5_tower_2_conv',
   id: mixed_5_join}
+
 - attrs: {kernel_h: 1, kernel_w: 1, num_output: 192, pad_h: 0, pad_w: 0, stride_h: 1,
     stride_w: 1}
   expr: mixed_6_conv_Conv2D<=Convolution<=mixed_5_join
   id: mixed_6_conv_Conv2D
+- attrs: {fPlane: 192}
+  expr: gsm_mixed_6_conv_Conv2D<=gsm<=mixed_6_conv_Conv2D
+  id: gsm_mixed_6_conv_Conv2D
 - attrs: {}
-  expr: mixed_6_conv<=BN<=mixed_6_conv_Conv2D
+  expr: mixed_6_conv<=BN<=gsm_mixed_6_conv_Conv2D
   id: mixed_6_conv_batchnorm
 - {expr: mixed_6_conv<=ReLU<=mixed_6_conv, id: mixed_6_conv}
 - attrs: {kernel_h: 1, kernel_w: 1, num_output: 160, pad_h: 0, pad_w: 0, stride_h: 1,
@@ -538,6 +548,7 @@ layers:
 - {expr: mixed_6_tower_2_conv<=ReLU<=mixed_6_tower_2_conv, id: mixed_6_tower_2_conv}
 - {expr: 'mixed_6_join<=Concat<=mixed_6_conv,mixed_6_tower_conv_2,mixed_6_tower_1_conv_4,mixed_6_tower_2_conv',
   id: mixed_6_join}
+
 - attrs: {kernel_h: 1, kernel_w: 1, num_output: 192, pad_h: 0, pad_w: 0, stride_h: 1,
     stride_w: 1}
   expr: mixed_7_conv_Conv2D<=Convolution<=mixed_6_join
@@ -626,6 +637,7 @@ layers:
 - {expr: mixed_7_tower_2_conv<=ReLU<=mixed_7_tower_2_conv, id: mixed_7_tower_2_conv}
 - {expr: 'mixed_7_join<=Concat<=mixed_7_conv,mixed_7_tower_conv_2,mixed_7_tower_1_conv_4,mixed_7_tower_2_conv',
   id: mixed_7_join}
+
 - attrs: {kernel_h: 1, kernel_w: 1, num_output: 192, pad_h: 0, pad_w: 0, stride_h: 1,
     stride_w: 1}
   expr: mixed_8_tower_conv_Conv2D<=Convolution<=mixed_7_join
@@ -682,6 +694,7 @@ layers:
   id: mixed_8_pool
 - {expr: 'mixed_8_join<=Concat<=mixed_8_tower_conv_1,mixed_8_tower_1_conv_3,mixed_8_pool',
   id: mixed_8_join}
+
 - attrs: {kernel_h: 1, kernel_w: 1, num_output: 320, pad_h: 0, pad_w: 0, stride_h: 1,
     stride_w: 1}
   expr: mixed_9_conv_Conv2D<=Convolution<=mixed_8_join
@@ -762,6 +775,7 @@ layers:
 - {expr: mixed_9_tower_2_conv<=ReLU<=mixed_9_tower_2_conv, id: mixed_9_tower_2_conv}
 - {expr: 'mixed_9_join<=Concat<=mixed_9_conv,mixed_9_tower_mixed_conv,mixed_9_tower_mixed_conv_1,mixed_9_tower_1_mixed_conv,mixed_9_tower_1_mixed_conv_1,mixed_9_tower_2_conv',
   id: mixed_9_join}
+
 - attrs: {kernel_h: 1, kernel_w: 1, num_output: 320, pad_h: 0, pad_w: 0, stride_h: 1,
     stride_w: 1}
   expr: mixed_10_conv_Conv2D<=Convolution<=mixed_9_join
@@ -842,7 +856,7 @@ layers:
 - {expr: mixed_10_tower_2_conv<=ReLU<=mixed_10_tower_2_conv, id: mixed_10_tower_2_conv}
 - {expr: 'mixed_10_join<=Concat<=mixed_10_conv,mixed_10_tower_mixed_conv,mixed_10_tower_mixed_conv_1,mixed_10_tower_1_mixed_conv,mixed_10_tower_1_mixed_conv_1,mixed_10_tower_2_conv',
   id: mixed_10_join}
-- attrs: {kernel_size: 6, mode: ave, pad: 0, stride: 1}
+- attrs: {kernel_size: 6, mode: ave, pad: 0, stride: 1, global: True}
   expr: top_cls_global_pool<=Pooling<=mixed_10_join
   id: top_cls_pool
 - attrs: {num_output: 1000}

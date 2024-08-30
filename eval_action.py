@@ -1,3 +1,4 @@
+import os
 import argparse
 import time
 from datetime import datetime
@@ -10,34 +11,37 @@ from src.utils.reproducibility import make_reproducible
 from src.models.model import VideoModel
 from src.dataset.video_dataset import VideoDataset, prepare_clips_data
 from src.dataset.video_transforms import GroupMultiScaleCrop, Stack, ToTorchFormatTensor, GroupNormalize
-from src.utils.meters import AverageMeter
 from src.utils.metrics import calc_accuracy
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--holoassist_dir", type=str, default="/data/users/amerinov/data/holoassist/HoloAssist")
-    parser.add_argument("--raw_annotation_file", type=str, default="/data/users/amerinov/data/holoassist/data-annotation-trainval-v1_1.json")
-    parser.add_argument("--split_dir", type=str, default="/data/users/amerinov/data/holoassist/data-splits-v1")
-    parser.add_argument("--fga_map_file", type=str, default="/data/users/amerinov/data/holoassist/fine_grained_actions_map.txt")
-    parser.add_argument("--base_model", type=str, default="InceptionV3")
-    parser.add_argument("--fusion_mode", type=str, default="GSF")
-    parser.add_argument("--num_segments", type=int, default=8)
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--num_workers", type=int, default=12)
-    parser.add_argument("--prefetch_factor", type=int, default=4)
-    parser.add_argument("--repetitions", type=int, default=3, help="Number of spatial and temporal sampling to achieve better precision in evaluation.")
-    parser.add_argument("--num_classes", type=int, default=1887)
-    parser.add_argument("--checkpoint", type=str, default="/data/users/amerinov/projects/holoassist/checkpoints/holoassist_InceptionV3_GSF_action_11.pth", help="Best model weigths.")
+    parser.add_argument("--holoassist_dir", type=str)
+    parser.add_argument("--raw_annotation_file", type=str)
+    parser.add_argument("--split_dir", type=str)
+    parser.add_argument("--fga_map_file", type=str)
+    parser.add_argument("--base_model", type=str)
+    parser.add_argument("--fusion_mode", type=str)
+    parser.add_argument("--pretrained", type=str)
+    parser.add_argument("--num_segments", type=int)
+    parser.add_argument("--batch_size", type=int)
+    parser.add_argument("--num_workers", type=int)
+    parser.add_argument("--prefetch_factor", type=int)
+    parser.add_argument("--repetitions", type=int, help="Number of spatial and temporal sampling to achieve better precision in evaluation.")
+    parser.add_argument("--num_classes", type=int)
+    parser.add_argument("--checkpoint", type=str, help="Best model weigths.")
     args = parser.parse_args()
     print(args)
+
+    # Check folders.
+    os.makedirs("logs", exist_ok=True)
 
     # Reproducibility.
     # Set up initial random states.
     make_reproducible(random_seed=0)
     
-    #  ========================= DEFINE MODEL =========================
+    #  ========================= LOAD MODEL =========================
     #
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -48,6 +52,8 @@ if __name__ == "__main__":
         base_model=args.base_model,
         fusion_mode=args.fusion_mode,
         verbose=False,
+        pretrained=args.pretrained,
+        mode="validation",
     ).to(device)
 
     input_size = model.input_size
@@ -55,12 +61,6 @@ if __name__ == "__main__":
     input_mean = model.input_mean
     input_std = model.input_std
     div = model.div
-    
-    # Parallel!
-    # model = torch.nn.DataParallel(model).to(device)
-
-    #  ========================= LOAD MODEL STATE =========================
-    # 
 
     checkpoint = torch.load(f=args.checkpoint, map_location=device)
     model.load_state_dict(state_dict=checkpoint["model_state_dict"], strict=True)
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     #  ========================= PREPARE CLIPS DATA =========================
     # 
 
-    va_video_name_arr, va_start_arr, va_end_arr, va_label_arr = prepare_clips_data(
+    video_name_arr, start_arr, end_arr, label_arr = prepare_clips_data(
         raw_annotation_file=args.raw_annotation_file,
         holoassist_dir=args.holoassist_dir, 
         split_dir=args.split_dir,
@@ -85,8 +85,11 @@ if __name__ == "__main__":
     # to achieve better precision in evaluation. Inside each repeats we will
     # initialize dataset with new spatial and temporal sampling.
 
-    global_acc1 = AverageMeter()
-    global_acc5 = AverageMeter()
+    # Let's average logits, since we use the same model.
+    # However, for different models we will average (calibrated?) probabilities.
+
+    logits = torch.empty((args.repetitions, len(video_name_arr), args.num_classes), dtype=torch.float32)
+    trues = torch.empty(len(video_name_arr), dtype=torch.int32)
 
     for repeat_id in range(args.repetitions):
 
@@ -101,66 +104,83 @@ if __name__ == "__main__":
 
         # Make dataloader for each repeat.
 
-        va_transform = Compose([
+        transform = Compose([
             GroupMultiScaleCrop(input_size=input_size, scales=[1, .875]),
             Stack(),
             ToTorchFormatTensor(div=div),
             GroupNormalize(mean=input_mean, std=input_std),
         ])
-        va_dataset = VideoDataset(
+        dataset = VideoDataset(
             holoassist_dir=args.holoassist_dir,
-            video_name_arr=va_video_name_arr,
-            start_arr=va_start_arr,
-            end_arr=va_end_arr,
-            label_arr=va_label_arr,
+            video_name_arr=video_name_arr,
+            start_arr=start_arr,
+            end_arr=end_arr,
+            label_arr=label_arr,
             num_segments=args.num_segments,
-            transform=va_transform,
+            transform=transform,
             mode="validation",
         )
-        va_dataloader = DataLoader(
-            dataset=va_dataset, 
-            batch_size=args.batch_size, 
+        dataloader = DataLoader(
+            dataset=dataset,
+            batch_size=args.batch_size,
             shuffle=False,
-            num_workers=args.num_workers, 
+            num_workers=args.num_workers,
             drop_last=False, 
-            pin_memory=False,
+            pin_memory=True,
             prefetch_factor=args.prefetch_factor,
         )
 
         #  ========================= EVALUATION LOOP =========================
         # 
+
+        processed_clips = 0
         
         model.eval()
         with torch.no_grad():
-            for batch_id, batch in enumerate(va_dataloader):
+            for batch_id, batch in enumerate(dataloader):
             
-                batch_x = batch[0].to(device) # video batch with image sequences [n, t_c, h, w]
-                batch_y = batch[1].to(device) # video batch labels [n]
+                xs = batch[0].to(device) # video batch with image sequences [n, t_c, h, w]
+                ys = batch[1].to(device) # video batch labels [n]
 
-                # # check that repetitions work
-                # if batch_id == 3:
-                #     print(batch_x[0], flush=True)
-                #     print(batch_y, flush=True)
+                # Make prediction for the batch
+                batch_logits = model(xs) # [n, num_classes]
                 
-                # Make prediction for validation batch
-                batch_logits = model(batch_x)
+                logits[repeat_id, processed_clips:processed_clips + xs.size(0), :] = batch_logits
+                trues[processed_clips:processed_clips + xs.size(0)] = ys
+                processed_clips += xs.size(0)
 
-                # Batch metrics
-                batch_acc1, batch_acc5 = calc_accuracy(batch_logits, batch_y, topk=(1,5))
+                if batch_id % 100 == 0:
 
-                # Update global metrics
-                global_acc1.update(batch_acc1, n=batch_logits.size(0))
-                global_acc5.update(batch_acc5, n=batch_logits.size(0))
-
-                if batch_id % 10 == 0:
-                    print(f"repeat_id={repeat_id}/{args.repetitions}",
-                          f"batch_id={batch_id:04d}/{len(va_dataloader):04d}",
-                          f"|",
-                          f"batch_acc@1={batch_acc1:.3f}",
-                          f"batch_acc@5={batch_acc5:.3f}",
-                          f"|",
-                          f"global_acc@1={global_acc1.avg:.3f}",
-                          f"global_acc@5={global_acc5.avg:.3f}",
+                    acc1, acc5  = calc_accuracy(
+                        preds=torch.mean(logits[:, :processed_clips + xs.size(0), :], dim=0), 
+                        labels=trues[:processed_clips + xs.size(0)], 
+                        topk=(1,5)
+                    )
+                    print(f"batch_id={batch_id:04d}/{len(dataloader):04d}",
+                          f"processed_clips={processed_clips}/{len(dataset):04d}",
+                          f"acc@1={acc1:.3f}",
+                          f"acc@5={acc5:.3f}",
+                          f"time={datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}",
                           flush=True)
     
+        # flops, macs, params = calculate_flops(
+        #     model=model, 
+        #     input_shape=tuple(xs.size()),
+        #     output_as_string=True,
+        #     output_precision=4
+        # )
+        # print("FLOPs:%s   MACs:%s   Params:%s \n" %(flops, macs, params))
+        
+        acc1, acc5  = calc_accuracy(
+            preds=torch.mean(logits, dim=0), 
+            labels=trues, 
+            topk=(1,5)
+        )
+        print()
+        print(f"Repeat {repeat_id} statistics", flush=True)
+        print(f"repeat_id={repeat_id}", 
+              f"acc@1={acc1:.3f}",
+              f"acc@5={acc5:.3f}")
+        print()
+        
     print("DONE.")

@@ -9,6 +9,7 @@ from torch.nn.utils import clip_grad_norm_
 from torchvision.transforms import Compose
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
+import torch.utils.tensorboard as tensorboard
 
 from src.opts.opts import parser
 from src.utils.reproducibility import make_reproducible
@@ -20,10 +21,9 @@ from src.utils.metrics import calc_accuracy
 
 
 if __name__ == "__main__":
-
-    # Check folders.
+    
+    # Check logs folder.
     os.makedirs("logs", exist_ok=True)
-    os.makedirs("checkpoints", exist_ok=True)
 
     # Reproducibility.
     # Set up initial random states.
@@ -33,6 +33,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args)
 
+    # Configuration name
+    configuration = f"{args.fusion_mode}_{args.base_model}_{args.pretrained}_bs{args.batch_size}_ns{args.num_segments}"
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = VideoModel(
@@ -41,6 +44,7 @@ if __name__ == "__main__":
         base_model=args.base_model,
         fusion_mode=args.fusion_mode,
         verbose=False,
+        pretrained=args.pretrained,
     ).to(device)
 
     input_size = model.input_size
@@ -49,6 +53,7 @@ if __name__ == "__main__":
     input_std = model.input_std
     div = model.div
     learnable_named_parameters = model.learnable_named_parameters
+    pretrained =  model.pretrained
     
     # Parallel!
     # if args.base_model != "HORST":
@@ -144,10 +149,10 @@ if __name__ == "__main__":
         momentum=args.momentum,
         weight_decay=args.weight_decay
     )
-    if args.base_model in ["InceptionV3"]:
+    if args.base_model in ["InceptionV3", "ResNet50"]:
         lr_scheduler = MultiStepLR(
             optimizer=optimizer,
-            milestones=[5, 10],
+            milestones=[5, 10, 13, 15],
             gamma=0.5
         )
     else:
@@ -169,6 +174,18 @@ if __name__ == "__main__":
                 lr_scheduler.step()
         else:
             raise ValueError(f"=> No checkpoint found at {args.resume}")
+        
+    # ==================== Make tensorboard writer =================================
+
+    runs_folder = 'runs'
+    os.makedirs(runs_folder, exist_ok=True)
+
+    experiment_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    experiment_folder = f"{configuration}_{experiment_time}"
+    os.makedirs(f"{runs_folder}/{experiment_folder}", exist_ok=True)
+
+    writer = tensorboard.SummaryWriter(log_dir=f"{runs_folder}/{experiment_folder}")
+    writer.add_text('Run parameters', " ".join([f"{k}={v}" for k,v in args.__dict__.items()]))
         
     # ==================== Main train-validation loop =================================
 
@@ -311,6 +328,13 @@ if __name__ == "__main__":
                 
                 del va_preds, va_loss, va_acc1, va_acc5, va_batch, va_x, va_y
                 gc.collect()
+          
+            writer.add_scalar('tr/loss', tr_epoch_loss.avg, global_step=epoch)
+            writer.add_scalar('tr/acc@1', tr_epoch_acc1.avg, global_step=epoch)
+            writer.add_scalar('tr/acc@5', tr_epoch_acc5.avg, global_step=epoch)
+            writer.add_scalar('va/loss', va_epoch_loss.avg, global_step=epoch)
+            writer.add_scalar('va/acc@1', va_epoch_acc1.avg, global_step=epoch)
+            writer.add_scalar('va/acc@5', va_epoch_acc5.avg, global_step=epoch)
 
         # ----------------------------------------------------------------------------------
 
@@ -327,15 +351,20 @@ if __name__ == "__main__":
               f"\n", flush=True)
         
         # Save model checkpoint
-        checkpoint_fn = f"holoassist_{args.base_model}_{args.fusion_mode}_action_{epoch:02d}.pth"
+        checkpoint_folder = f"{args.fusion_mode}_{args.base_model}_{args.pretrained}_bs{args.batch_size}_ns{args.num_segments}"
+        checkpoint_fn = f"{checkpoint_folder}_ep{epoch:02d}.pth"
+        os.makedirs("checkpoints", exist_ok=True)
+        os.makedirs(f"checkpoints/{checkpoint_folder}", exist_ok=True)
         checkpoint = {
             "epoch": epoch,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             'lr_scheduler_state_dict': lr_scheduler.state_dict(),
         }
-        torch.save(obj=checkpoint, f=f"checkpoints/{checkpoint_fn}")
+        torch.save(obj=checkpoint, f=f"checkpoints/{checkpoint_folder}/{checkpoint_fn}")
         print(f"Write model checkpoint {checkpoint_fn}", flush=True)
 
         del checkpoint
         gc.collect()
+
+    writer.close()

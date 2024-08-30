@@ -1,4 +1,3 @@
-import gc
 import os
 import time
 from datetime import datetime
@@ -6,37 +5,33 @@ import argparse
 import json
 
 import torch
-import torch.nn as nn
-from torch.nn.utils import clip_grad_norm_
 from torchvision.transforms import Compose
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
-import torch.nn.functional as F
 
 from src.opts.opts import parser
 from src.utils.reproducibility import make_reproducible
 from src.models.model import VideoModel
 from src.dataset.video_dataset import VideoDatasetTest, prepare_clips_data_test
 from src.dataset.video_transforms import GroupMultiScaleCrop, Stack, ToTorchFormatTensor, GroupNormalize
-from src.utils.meters import AverageMeter
-from src.utils.metrics import calc_accuracy
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--holoassist_dir", type=str, default="/data/users/amerinov/data/holoassist/HoloAssist")
-    parser.add_argument("--test_action_clips_file", type=str, default="/data/users/amerinov/data/holoassist/test_action_clips-v1_2.txt")
-    parser.add_argument("--fga_map_file", type=str, default="/data/users/amerinov/data/holoassist/fine_grained_actions_map.txt")
-    parser.add_argument("--base_model", type=str, default="InceptionV3")
-    parser.add_argument("--fusion_mode", type=str, default="GSF")
-    parser.add_argument("--num_segments", type=int, default=8)
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--num_workers", type=int, default=12)
-    parser.add_argument("--prefetch_factor", type=int, default=4)
-    parser.add_argument("--repetitions", type=int, default=3, help="Number of spatial and temporal sampling to achieve better precision in evaluation.")
-    parser.add_argument("--num_classes", type=int, default=1887)
-    parser.add_argument("--checkpoint", type=str, default="/data/users/amerinov/projects/holoassist/checkpoints/holoassist_InceptionV3_GSF_action_11.pth", help="Best model weigths.")
+    parser.add_argument("--holoassist_dir", type=str)
+    parser.add_argument("--test_action_clips_file", type=str)
+    parser.add_argument("--fga_map_file", type=str)
+    parser.add_argument("--base_model", type=str)
+    parser.add_argument("--fusion_mode", type=str)
+    parser.add_argument("--pretrained", type=str)
+    parser.add_argument("--num_segments", type=int)
+    parser.add_argument("--batch_size", type=int)
+    parser.add_argument("--num_workers", type=int)
+    parser.add_argument("--prefetch_factor", type=int)
+    parser.add_argument("--repetitions", type=int, help="Number of spatial and temporal sampling to achieve better precision in evaluation.")
+    parser.add_argument("--num_classes", type=int)
+    parser.add_argument("--checkpoint", type=str, help="Best model weigths.")
+    parser.add_argument("--checkpoint_folder", type=str)
     args = parser.parse_args()
     print(args)
 
@@ -47,7 +42,7 @@ if __name__ == "__main__":
     # Set up initial random states.
     make_reproducible(random_seed=0)
 
-    #  ========================= DEFINE MODEL =========================
+    #  ========================= LOAD MODEL =========================
     #
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -58,6 +53,7 @@ if __name__ == "__main__":
         base_model=args.base_model,
         fusion_mode=args.fusion_mode,
         verbose=False,
+        pretrained=args.pretrained,
     ).to(device)
 
     input_size = model.input_size
@@ -65,12 +61,6 @@ if __name__ == "__main__":
     input_mean = model.input_mean
     input_std = model.input_std
     div = model.div
-    
-    # Parallel!
-    # model = torch.nn.DataParallel(model).to(device)
-
-    #  ========================= LOAD MODEL STATE =========================
-    # 
 
     checkpoint = torch.load(f=args.checkpoint, map_location=device)
     model.load_state_dict(state_dict=checkpoint["model_state_dict"], strict=True)
@@ -143,7 +133,7 @@ if __name__ == "__main__":
             
                 xs = xs.to(device) # video batch with image sequences [n, t_c, h, w]
 
-                # Make prediction for validation batch
+                # Make prediction for the batch
                 batch_logits = model(xs) # [n, num_classes]
  
                 logits[repeat_id, processed_clips:processed_clips + xs.size(0), :] = batch_logits
@@ -154,19 +144,35 @@ if __name__ == "__main__":
                           f"processed_clips={processed_clips}/{len(dataset):04d}",
                           f"time={datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}",
                           flush=True)
-    
-    # Make average prediction for each clip
-    logits = torch.mean(logits, dim=0, keepdim=False) # [num_clips, num_classes]
-    top5_logits, top5_indices = torch.topk(logits, k=5, dim=1) # top5_indices: [num_clips, 5]
-    
-    # And create a dictionary with keys of format "{videoname}_{starttime}_{endtime}"
-    top5 = {}
-    top5["modality"] = "RGB"
-    for k,v in zip(key_list, top5_indices):
-        top5[k] = v.tolist()
+        
+        # =====================================================================
 
-    # Save dictionary
-    with open(file="checkpoints/pred.json", mode='w') as f:
-        json.dump(top5, f)
+        # Make average prediction for each clip
+        logits_mean = torch.mean(logits, dim=0, keepdim=False) # [num_clips, num_classes]
+        top5_logits, top5_indices = torch.topk(logits_mean, k=5, dim=1) # top5_indices: [num_clips, 5]
+        
+        # And create a dictionary with keys of format "{videoname}_{starttime}_{endtime}"
+        top5 = {}
+        top5["modality"] = "RGB"
+        for k,v in zip(key_list, top5_indices):
+            top5[k] = v.tolist()
+
+        # SAVE FOR EACH REPEAT
+        # ====================
+
+        TOP5_IDS_FNAME = f"{args.checkpoint_folder}/pred_{repeat_id}.json"
+        LOGITS_MEAN_FNAME = f"{args.checkpoint_folder}/logits_{repeat_id}.pt"
+        KEYS_FNAME = f"{args.checkpoint_folder}/keys_{repeat_id}.json"
+        
+        # Save top5 dictionary
+        with open(file=TOP5_IDS_FNAME, mode='w') as f:
+            json.dump(top5, f)
+
+        # Save keys, or clip names (json, or list of size [num_clips])
+        with open(file=KEYS_FNAME, mode='w') as f:
+            json.dump(key_list, f)
+
+        # Save predictions (tensor of size [num_clips, num_classes])
+        torch.save(obj=logits_mean, f=LOGITS_MEAN_FNAME)
 
     print("Done")

@@ -1,6 +1,7 @@
 from torch import nn
 from ..models.gsf import GSF
 from ..models.gsm import GSM
+from ..models.tsm import TSM
 LAYER_BUILDER_DICT=dict()
 
 
@@ -93,6 +94,14 @@ def build_gsf(info, num_segments=3, gsf_ch_ratio=100):
     out, op, in_vars = parse_expr(info['expr'])
     out_channels = attr['fPlane']
     gsf = GSF(out_channels, num_segments=num_segments, gsf_ch_ratio=gsf_ch_ratio)
+    return id, out[0], gsf, out_channels, in_vars[0]
+
+def build_tsm(info, num_segments=3, n_div=8):
+    id = info['id']
+    attr = info['attrs'] if 'attrs' in info else list()
+    out, op, in_vars = parse_expr(info['expr'])
+    out_channels = attr['fPlane']
+    gsf = TSM(num_segments=num_segments, n_div=n_div)
     return id, out[0], gsf, out_channels, in_vars[0]
 
 LAYER_BUILDER_DICT['Convolution'] = build_conv

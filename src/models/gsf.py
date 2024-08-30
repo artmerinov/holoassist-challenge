@@ -76,6 +76,8 @@ class GSF(nn.Module):
 
         y_group1 = gate_group1 * x_group1 # [n=16, c=24, t=8, h=28, w=28]
         y_group2 = gate_group2 * x_group2 # [n=16, c=24, t=8, h=28, w=28]
+        # print(y_group1)
+        # print(y_group2)
 
         r_group1 = x_group1 - y_group1 # [n=16, c=24, t=8, h=28, w=28]
         r_group2 = x_group2 - y_group2 # [n=16, c=24, t=8, h=28, w=28]

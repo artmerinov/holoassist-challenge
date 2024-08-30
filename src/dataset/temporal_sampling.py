@@ -28,15 +28,23 @@ def temporal_sampling(
     # else:
     #     raise NotImplementedError()
 
-    if average_duration > 0:
+    # if average_duration > 0:
+    #     segment_indices = (
+    #         np.multiply(list(range(num_segments)), average_duration) + 
+    #         randint(average_duration, size=num_segments)
+    #     )
+    # elif num_frames > num_segments:
+    #     segment_indices = np.sort(randint(num_frames, size=num_segments))
+    # else:
+    #     segment_indices = np.zeros((num_segments,), dtype="int64")
+
+    if average_duration > 1:
         segment_indices = (
             np.multiply(list(range(num_segments)), average_duration) + 
             randint(average_duration, size=num_segments)
         )
-    elif num_frames > num_segments:
-        segment_indices = np.sort(randint(num_frames, size=num_segments))
     else:
-        segment_indices = np.zeros((num_segments,), dtype="int64")
+        segment_indices = np.sort(randint(num_frames, size=num_segments))
     
     frames =  [frames[i] for i in segment_indices]
 

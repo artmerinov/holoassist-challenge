@@ -10,9 +10,13 @@ def get_video_name_list(
     """
     Outputs list of video paths.
     """
-    tr_list_path = os.path.join(split_dir, "train-v1.txt")
-    va_list_path = os.path.join(split_dir, "val-v1.txt")
-    te_list_path = os.path.join(split_dir, "test-v1.txt")
+    # tr_list_path = os.path.join(split_dir, "train-v1.txt")
+    # va_list_path = os.path.join(split_dir, "val-v1.txt")
+    # te_list_path = os.path.join(split_dir, "test-v1.txt")
+
+    tr_list_path = os.path.join(split_dir, "train-v1_2.txt")
+    va_list_path = os.path.join(split_dir, "val-v1_2.txt")
+    te_list_path = os.path.join(split_dir, "test-v1_2.txt")
 
     if mode == "train":
         with open(tr_list_path, 'r') as file:

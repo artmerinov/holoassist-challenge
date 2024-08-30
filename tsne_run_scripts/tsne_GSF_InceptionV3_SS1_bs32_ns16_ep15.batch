@@ -1,0 +1,32 @@
+#!/bin/bash
+
+#SBATCH --ntasks=16
+#SBATCH --mem=128G
+#SBATCH --partition=gpu-low
+#SBATCH --account=holo-assist
+#SBATCH --time=0-02:00:00
+#SBATCH --output=example-%j.out
+#SBATCH --error=example-%j.err
+#SBATCH --gres=gpu:a100_3g.40gb:1
+
+module load python/3.10.8-gcc-12.1.0-linux-ubuntu22.04-zen2
+source /data/users/amerinov/projects/holoassist/.venv/bin/activate
+
+PROJECT_ROOT_DIR="/data/users/amerinov/projects/holoassist"
+cd "$PROJECT_ROOT_DIR"
+
+python3 -B /data/users/amerinov/projects/holoassist/tsne.py \
+    --holoassist_dir /data/users/amerinov/data/holoassist/HoloAssist \
+    --raw_annotation_file /data/users/amerinov/data/holoassist/data-annotation-trainval-v1_1.json \
+    --split_dir /data/users/amerinov/data/holoassist/data-splits-v1_2 \
+    --fga_map_file /data/users/amerinov/data/holoassist/fine_grained_actions_map.txt \
+    --num_classes 1887 \
+    --base_model InceptionV3 \
+    --fusion_mode GSF \
+    --pretrained SS1 \
+    --batch_size 16 \
+    --num_workers 16 \
+    --prefetch_factor 8 \
+    --num_segments 16 \
+    --checkpoint /data/users/amerinov/projects/holoassist/checkpoints/GSF_InceptionV3_SS1_bs32_ns16/GSF_InceptionV3_SS1_bs32_ns16_ep15.pth \
+    

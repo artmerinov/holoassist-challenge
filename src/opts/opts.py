@@ -11,13 +11,14 @@ parser.add_argument("--fga_map_file", type=str, default="/Users/artemmerinov/dat
 
 # ========================= Model ==========================
 parser.add_argument("--base_model", type=str, default="InceptionV3", choices=["ResNet50", "ResNet101", "InceptionV3", "TimeSformer", "HORST"])
-parser.add_argument("--fusion_mode", type=str, default=None, choices=["None", "GSF", "GSM"], help="Fusion mode.")
+parser.add_argument("--fusion_mode", type=str, default=None, choices=["TSN", "TSM", "GSM", "GSF"], help="Fusion mode.")
 parser.add_argument("--num_segments", type=int, default=8, help="Number of sampled frames from each video.")
 parser.add_argument("--num_classes", type=int, default=1887, choices=[1887, 2], help="Number of labels.")
 
 # ========================= Load Model =========================
 parser.add_argument("--resume", type=str, default=None, help="Path to model to continue learning.")
 parser.add_argument('--start-epoch', default=0, type=int, help="Epoch number.")
+parser.add_argument('--pretrained', default="ImageNet", type=str, help="Pretrained model.")
 
 # ========================= Learning =========================
 parser.add_argument("--num_epochs", type=int, default=10)
